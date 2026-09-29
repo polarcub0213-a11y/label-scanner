@@ -785,58 +785,68 @@
       document.getElementById('sheet2-total-weight').textContent = totalWeight.toFixed(2);
     }
 
-    // 前端串流讀取大庫 CSV 並使用原生 TextDecoder('big5') 解析，防逾時且中文不亂碼
-    function autoSyncLatestCsv() {
-      const badge = document.getElementById('badge-csv-status');
-      const text = document.getElementById('csv-status-text');
-      if (badge) badge.classList.remove('hidden');
-      if (text) text.textContent = '大庫同步中...';
+    // 智慧同步：帶著 P 單向 GAS 索取過濾結果，不受 Google Drive CORS 限制，中文絕不亂碼
+function autoSyncLatestCsv() {
+  const badge = document.getElementById('badge-csv-status');
+  const text = document.getElementById('csv-status-text');
+  if (badge) badge.classList.remove('hidden');
 
-      const callbackName = 'gasCallback_' + Date.now();
-      const timeoutTimer = setTimeout(() => {
-        delete window[callbackName];
-        const oldScript = document.getElementById('jsonp-gas-script');
-        if (oldScript) oldScript.remove();
-        if (text) text.textContent = '連線逾時 (請點此手動上傳)';
-      }, 15000);
+  // 取出目前畫面上的所有 P 單（轉大寫並去除空白）
+  const pList = state.labels.map(l => (l.p_order || '').trim()).filter(Boolean).join(',');
 
-      window[callbackName] = async function(json) {
-        clearTimeout(timeoutTimer);
-        delete window[callbackName];
-        const oldScript = document.getElementById('jsonp-gas-script');
-        if (oldScript) oldScript.remove();
+  if (text) {
+    text.textContent = pList ? '對碰雲端大庫中...' : '檢查雲端大庫中...';
+  }
 
-        if (json && json.status === 'success' && json.fileId) {
-          try {
-            const dlUrl = `https://drive.google.com/uc?export=download&id=${json.fileId}&t=${Date.now()}`;
-            const resp = await fetch(dlUrl);
-            if (!resp.ok) throw new Error('串流受阻');
-            
-            const arrayBuf = await resp.arrayBuffer();
-            const decoder = new TextDecoder('big5');
-            const csvText = decoder.decode(arrayBuf);
-            
-            parseCsvContent(csvText);
-            if (text) text.textContent = `已讀取 ${json.fileName} (${state.csvRows.length}筆)`;
-            matchWithCsv();
-          } catch (dlErr) {
-            console.warn('直讀受限，提示手動載入:', dlErr);
-            if (text) text.textContent = `已找到 ${json.fileName} (請點手動上傳)`;
-          }
-        } else {
-          if (text) text.textContent = json.message || '未找到大庫 CSV';
-        }
-      };
+  const callbackName = 'gasCallback_' + Date.now();
+  const timeoutTimer = setTimeout(() => {
+    delete window[callbackName];
+    const oldScript = document.getElementById('jsonp-gas-script');
+    if (oldScript) oldScript.remove();
+    if (text) text.textContent = '連線逾時 (請檢查網路)';
+  }, 20000);
 
-      const oldScript = document.getElementById('jsonp-gas-script');
-      if (oldScript) oldScript.remove();
+  window[callbackName] = function(json) {
+    clearTimeout(timeoutTimer);
+    delete window[callbackName];
+    const oldScript = document.getElementById('jsonp-gas-script');
+    if (oldScript) oldScript.remove();
 
-      const script = document.createElement('script');
-      script.id = 'jsonp-gas-script';
-      const targetDate = state.selectedDate ? state.selectedDate.replace(/-/g, '') : '';
-      script.src = `${state.gasUrl}?callback=${callbackName}&date=${targetDate}&t=${Date.now()}`;
-      document.body.appendChild(script);
+    if (json && (json.status === 'success' || json.status === 'ready')) {
+      if (json.status === 'ready') {
+        if (text) text.textContent = `雲端就緒 (${json.fileName})`;
+        return;
+      }
+
+      state.matchedDetails = json.matchedRows || [];
+      if (text) text.textContent = `已讀取 ${json.fileName} (${state.matchedDetails.length}筆符合)`;
+      
+      const badgeCount = document.getElementById('badge-match-count');
+      const statMatched = document.getElementById('stat-matched-rows');
+      const statCsv = document.getElementById('stat-csv-rows');
+
+      if (badgeCount) badgeCount.textContent = `${state.matchedDetails.length}筆符合`;
+      if (statMatched) statMatched.textContent = `${state.matchedDetails.length} 筆`;
+      if (statCsv) statCsv.textContent = `${json.totalRows || state.matchedDetails.length} 筆`;
+
+      renderSheet1Table();
+      renderSheet2Table();
+    } else {
+      if (text) text.textContent = json.message || '未找到大庫 CSV';
     }
+  };
+
+  const oldScript = document.getElementById('jsonp-gas-script');
+  if (oldScript) oldScript.remove();
+
+  const script = document.createElement('script');
+  script.id = 'jsonp-gas-script';
+  const targetDate = state.selectedDate ? state.selectedDate.replace(/-/g, '') : '';
+  
+  // 傳入 p_orders 參數
+  script.src = `${state.gasUrl}?callback=${callbackName}&date=${targetDate}&p_orders=${encodeURIComponent(pList)}&t=${Date.now()}`;
+  document.body.appendChild(script);
+}
 
     function parseCsvContent(content) {
       if (!content) return;

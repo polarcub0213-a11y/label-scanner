@@ -934,49 +934,71 @@
       XLSX.writeFile(wb, fileName, { bookType: 'biff8' });
     }
 
-    // 回寫雲端真實 .xls
-    async function writeToGasCloud() {
-      if (!state.matchedDetails.length) {
-        alert('尚無比對資料可回寫雲端');
-        return;
+    // 回寫雲端真實 .xls (加強 Base64 編碼相容性)
+async function writeToGasCloud() {
+  if (!state.matchedDetails.length) {
+    alert('尚無比對資料可回寫雲端');
+    return;
+  }
+
+  const btn = document.getElementById('btn-gas-write-sheet');
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 回寫中...';
+
+  try {
+    const wb = buildDualSheetWorkbook();
+    
+    // 1. 取得二進位 ArrayBuffer，再轉換成穩定的 Base64 字串
+    let base64Xls = "";
+    try {
+      base64Xls = XLSX.write(wb, { bookType: 'biff8', type: 'base64' });
+    } catch (e) {
+      // 備援方案：若 type: 'base64' 失敗，改用 binary array 轉碼
+      const u8 = XLSX.write(wb, { bookType: 'biff8', type: 'array' });
+      let binary = '';
+      const bytes = new Uint8Array(u8);
+      const len = bytes.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
       }
-
-      const btn = document.getElementById('btn-gas-write-sheet');
-      const originalText = btn.innerHTML;
-      btn.disabled = true;
-      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 回寫中...';
-
-      try {
-        const wb = buildDualSheetWorkbook();
-        const base64Xls = XLSX.write(wb, { bookType: 'biff8', type: 'base64' });
-
-        const [y, m, d] = state.selectedDate.split('-');
-        const rocStr = `${parseInt(y) - 1911}${m}${d}`;
-        const fileName = `上傳提貨用${rocStr}.xls`;
-
-        const resp = await fetch(state.gasUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'uploadXls',
-            fileName: fileName,
-            fileBase64: base64Xls
-          })
-        });
-
-        const resJson = await resp.json();
-        if (resJson.status === 'success') {
-          alert(`✅ 回寫成功！已於雲端硬碟建立二進位 Excel 實體檔案：\n${resJson.fileName}`);
-        } else {
-          alert('❌ 回寫失敗：' + (resJson.message || '未知錯誤'));
-        }
-      } catch (err) {
-        alert('連線失敗：' + err.message);
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-      }
+      base64Xls = window.btoa(binary);
     }
+
+    if (!base64Xls) {
+      throw new Error("無法生成 Excel 二進位資料，請檢查表格內容");
+    }
+
+    const [y, m, d] = state.selectedDate.split('-');
+    const rocStr = `${parseInt(y) - 1911}${m}${d}`;
+    const fileName = `上傳提貨用${rocStr}.xls`;
+
+    // 2. 傳送至 Google Apps Script
+    const payload = JSON.stringify({
+      action: 'uploadXls',
+      fileName: fileName,
+      fileBase64: base64Xls
+    });
+
+    const resp = await fetch(state.gasUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: payload
+    });
+
+    const resJson = await resp.json();
+    if (resJson.status === 'success') {
+      alert(`✅ 回寫成功！已於雲端硬碟建立二進位 Excel 實體檔案：\n${resJson.fileName}`);
+    } else {
+      alert('❌ 回寫失敗：' + (resJson.message || '未知錯誤'));
+    }
+  } catch (err) {
+    alert('連線失敗：' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+}
 
     function loadSampleData() {
       state.labels = JSON.parse(JSON.stringify(FALLBACK_LABELS_SAMPLE));

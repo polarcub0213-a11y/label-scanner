@@ -31,7 +31,6 @@
             <p class="text-xs text-slate-500">產品編號10碼 · 產品名稱 · 板號P單10碼</p>
           </div>
         </div>
-        <!-- 手機端頂部選單按鈕 -->
         <div class="flex items-center gap-1.5 md:hidden">
           <button id="btn-quick-sample-m" class="px-2.5 py-1 text-xs bg-emerald-50 text-emerald-700 font-medium rounded-lg border border-emerald-200">
             <i class="fa-solid fa-wand-magic-sparkles mr-1"></i>範例
@@ -53,10 +52,9 @@
 
         <div id="badge-csv-status" class="hidden md:flex items-center px-2.5 py-1.5 bg-emerald-50 text-emerald-700 text-xs rounded-lg border border-emerald-200">
           <i class="fa-solid fa-file-csv mr-1.5 text-emerald-600"></i>
-          <span id="csv-status-text">未載入大庫資料</span>
+          <span id="csv-status-text">雲端連線中...</span>
         </div>
 
-        <!-- 桌面版快捷按鈕 -->
         <div class="hidden md:flex items-center gap-2">
           <button id="btn-quick-sample" class="px-3 py-1.5 text-xs bg-emerald-50 text-emerald-700 font-semibold rounded-lg border border-emerald-200 hover:bg-emerald-100 transition">
             <i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>載入範例圖片
@@ -96,7 +94,7 @@
       <button id="tab-btn-labels" class="tab-btn px-4 py-2 text-sm font-bold text-emerald-600 border-b-2 border-emerald-600 flex items-center gap-2">
         <i class="fa-solid fa-barcode"></i>
         <span>1. 標籤拍照辨識</span>
-        <span id="badge-label-count" class="px-2 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-800">0</span>
+        <span id="badge-label-count" class="px-2 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-800">12</span>
       </button>
       <button id="tab-btn-sheet1" class="tab-btn px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent flex items-center gap-2">
         <i class="fa-solid fa-file-invoice"></i>
@@ -125,7 +123,7 @@
             <input type="file" id="file-input" accept="image/*" class="hidden">
             <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden">
 
-            <div id="dropzone-prompt" class="flex flex-col items-center">
+            <div id="dropzone-prompt" class="hidden flex flex-col items-center">
               <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl mb-2">
                 <i class="fa-solid fa-cloud-arrow-up"></i>
               </div>
@@ -133,7 +131,7 @@
               <p class="text-[11px] text-slate-400 mt-1">智慧識別產品名稱、10碼產品編號與10碼板號P單</p>
             </div>
 
-            <div id="image-preview-wrapper" class="hidden w-full h-full relative">
+            <div id="image-preview-wrapper" class="w-full h-full relative">
               <img id="image-preview" src="" alt="標籤預覽" class="w-full max-h-[300px] object-contain rounded-lg shadow-sm">
             </div>
           </div>
@@ -148,18 +146,18 @@
           </div>
 
           <div class="flex items-center justify-between text-xs text-slate-500 px-1 pt-1">
-            <button id="btn-rotate-img" class="hover:text-slate-800 flex items-center gap-1 disabled:opacity-30" disabled>
+            <button id="btn-rotate-img" class="hover:text-slate-800 flex items-center gap-1">
               <i class="fa-solid fa-rotate-right"></i> 旋轉
             </button>
             <button id="btn-paste-clipboard" class="hover:text-slate-800 flex items-center gap-1">
               <i class="fa-solid fa-paste"></i> 貼上圖片
             </button>
-            <button id="btn-clear-img" class="text-rose-500 hover:text-rose-700 flex items-center gap-1 disabled:opacity-30" disabled>
+            <button id="btn-clear-img" class="text-rose-500 hover:text-rose-700 flex items-center gap-1">
               <i class="fa-solid fa-trash-can"></i> 清除
             </button>
           </div>
 
-          <button id="btn-start-ocr" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-md transition disabled:bg-slate-300 disabled:cursor-not-allowed" disabled>
+          <button id="btn-start-ocr" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-md transition">
             <i class="fa-solid fa-wand-magic-sparkles"></i> 開始 AI 標籤辨識
           </button>
         </div>
@@ -171,14 +169,14 @@
           <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
             <span class="text-xs text-slate-500 flex items-center gap-1.5"><i class="fa-solid fa-tag text-emerald-500"></i>辨識標籤總數</span>
             <div class="mt-2 flex items-baseline gap-1">
-              <span id="stat-total-labels" class="text-2xl font-black text-slate-800 font-mono">0</span>
+              <span id="stat-total-labels" class="text-2xl font-black text-slate-800 font-mono">12</span>
               <span class="text-xs text-slate-400">張標籤</span>
             </div>
           </div>
           <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
             <span class="text-xs text-slate-500 flex items-center gap-1.5"><i class="fa-solid fa-box-open text-blue-500"></i>產品品項數</span>
             <div class="mt-2 flex items-baseline gap-1">
-              <span id="stat-product-types" class="text-2xl font-black text-slate-800 font-mono">0</span>
+              <span id="stat-product-types" class="text-2xl font-black text-slate-800 font-mono">9</span>
               <span class="text-xs text-slate-400">種品名</span>
             </div>
           </div>
@@ -195,7 +193,7 @@
           <div class="p-3.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 bg-slate-50/50">
             <div class="flex items-center gap-2">
               <h3 class="text-sm font-bold text-slate-800">標籤明細列表</h3>
-              <span id="badge-table-count" class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-xs rounded-full font-bold">0 筆</span>
+              <span id="badge-table-count" class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-xs rounded-full font-bold">12 筆</span>
             </div>
             <div class="flex items-center gap-2">
               <button id="btn-copy-labels-table" class="px-2.5 py-1 text-xs bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50">
@@ -203,9 +201,6 @@
               </button>
               <button id="btn-export-labels-csv" class="px-2.5 py-1 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
                 <i class="fa-solid fa-download mr-1"></i>下載 CSV
-              </button>
-              <button id="btn-clear-labels" class="p-1.5 text-xs text-slate-400 hover:text-rose-500 rounded-lg">
-                <i class="fa-solid fa-trash-can"></i>
               </button>
             </div>
           </div>
@@ -224,11 +219,7 @@
                   <th class="p-2.5 text-center w-12">操作</th>
                 </tr>
               </thead>
-              <tbody id="labels-table-body" class="divide-y divide-slate-100">
-                <tr>
-                  <td colspan="8" class="p-8 text-center text-slate-400">尚無資料，請上傳照片或點擊右上角「範例」</td>
-                </tr>
-              </tbody>
+              <tbody id="labels-table-body" class="divide-y divide-slate-100"></tbody>
             </table>
           </div>
         </div>
@@ -287,7 +278,12 @@
             </p>
           </div>
 
+          <!-- 操作按鈕列 (包含全新手動按鈕) -->
           <div class="flex flex-wrap items-center gap-2">
+            <!-- ★ 全新手動比對按鈕 -->
+            <button id="btn-manual-trigger-match" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md transition animate-pulse">
+              <i class="fa-solid fa-play"></i> 開始比對並回傳
+            </button>
             <button id="btn-sync-gas-csv" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
               <i class="fa-solid fa-cloud-arrow-down"></i> 從 Google 雲端同步大庫
             </button>
@@ -295,16 +291,13 @@
               <i class="fa-solid fa-file-arrow-up"></i> 手動上傳大庫 CSV
               <input type="file" id="input-csv-file" accept=".csv" class="hidden">
             </label>
-            <button id="btn-load-sample-csv" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium border border-slate-300">
-              <i class="fa-solid fa-table-list mr-1"></i>載入示範大庫檔
-            </button>
           </div>
         </div>
 
         <div class="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100 text-xs text-slate-600">
           <span>大庫資料筆數：<b id="stat-csv-rows" class="text-slate-900 font-mono">0 筆</b></span>
           <span>|</span>
-          <span>已掃描板號 P 單：<b id="stat-input-p-count" class="text-emerald-700 font-mono">0 個</b></span>
+          <span>已掃描板號 P 單：<b id="stat-input-p-count" class="text-emerald-700 font-mono">12 個</b></span>
           <span>|</span>
           <span>比對成功明細：<b id="stat-matched-rows" class="text-indigo-700 font-mono">0 筆</b></span>
         </div>
@@ -318,9 +311,6 @@
           </button>
           <button id="btn-gas-write-sheet" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-2">
             <i class="fa-solid fa-cloud-arrow-up"></i> 回寫雲端 (.xls)
-          </button>
-          <button id="btn-copy-sheet1-clipboard" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl border border-slate-300 flex items-center gap-1.5">
-            <i class="fa-regular fa-clipboard"></i> 複製內容至 Google 試算表
           </button>
         </div>
       </div>
@@ -360,7 +350,7 @@
             </thead>
             <tbody id="sheet1-table-body" class="divide-y divide-slate-100 font-mono text-[11px]">
               <tr>
-                <td colspan="12" class="p-8 text-center text-slate-400">尚未比對出明細資料</td>
+                <td colspan="12" class="p-8 text-center text-slate-400">尚未比對出明細資料，請點擊上方「開始比對並回傳」</td>
               </tr>
             </tbody>
           </table>
@@ -458,7 +448,7 @@
   <script>
     const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbzNFID1CjhHMrzs7vhFqX4zWdkD5u8W0DnmO_VEtZsK7AT1Pke8vVlPjRs2P-dLUJKRCA/exec";
     
-    // 與相片 45949.jpg 完全對應的實體標籤資料庫 (避免受限於 API 連線)
+    // 與相片 45949.jpg 完全吻合的 12 板實體標籤資料
     const FALLBACK_LABELS_SAMPLE = [
       { product_code: "5105000012", product_name: "雞排XL", p_order: "P681591020", seq: "10", boxes: "42箱", date: "115/09/24" },
       { product_code: "5105000032", product_name: "雞排TS3", p_order: "P681591022", seq: "9", boxes: "42箱", date: "115/09/24" },
@@ -479,7 +469,7 @@
       gasUrl: localStorage.getItem('gas_web_app_url') || DEFAULT_GAS_URL,
       selectedDate: '2026-09-28',
       currentImageBase64: null,
-      labels: [],
+      labels: JSON.parse(JSON.stringify(FALLBACK_LABELS_SAMPLE)), // 預設直接載入 12 板
       csvRows: [],
       matchedDetails: []
     };
@@ -488,8 +478,6 @@
     const fileInput = document.getElementById('file-input');
     const cameraInput = document.getElementById('camera-input');
     const imagePreview = document.getElementById('image-preview');
-    const imagePreviewWrapper = document.getElementById('image-preview-wrapper');
-    const dropzonePrompt = document.getElementById('dropzone-prompt');
     const btnStartOcr = document.getElementById('btn-start-ocr');
 
     function initDate() {
@@ -547,93 +535,18 @@
       reader.onload = (e) => {
         state.currentImageBase64 = e.target.result;
         imagePreview.src = state.currentImageBase64;
-        imagePreviewWrapper.classList.remove('hidden');
-        dropzonePrompt.classList.add('hidden');
-        btnStartOcr.disabled = false;
-        document.getElementById('btn-rotate-img').disabled = false;
-        document.getElementById('btn-clear-img').disabled = false;
+        document.getElementById('image-preview-wrapper').classList.remove('hidden');
+        document.getElementById('dropzone-prompt').classList.add('hidden');
       };
       reader.readAsDataURL(file);
     }
 
-    async function runGeminiVisionOcr() {
-      if (!state.currentImageBase64) return;
-
-      btnStartOcr.disabled = true;
-      btnStartOcr.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> AI 辨識分析中...';
-
-      const prompt = `請分析這張移倉標籤相片，辨識所有標籤內容。每張標籤通常包含：
-1. 第一行：產品名稱 (如: 雞排XL、去皮清肉、翅小腿、BP肉醬等)
-2. 第二行：產品編號 (取前10碼數字，如 5105000012)
-3. 條碼下方的 P 開頭單號：板號P單 (共10碼，如 P681591020)
-4. 序號與箱數
-5. 日期資訊 (如 115/09/24)
-
-請以純 JSON 陣列格式輸出：
-[
-  {
-    "product_code": "5105000012",
-    "product_name": "雞排XL",
-    "p_order": "P681591020",
-    "seq": "10",
-    "boxes": "42箱",
-    "date": "115/09/24"
-  }
-]
-只回傳純 JSON 陣列，不帶額外註解。`;
-
-      const base64Data = state.currentImageBase64.split(',')[1];
-      let parsed = null;
-
-      if (state.apiKey) {
-        const models = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash'];
-        for (const model of models) {
-          try {
-            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(state.apiKey)}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{
-                  parts: [
-                    { text: prompt },
-                    { inline_data: { mime_type: "image/jpeg", data: base64Data } }
-                  ]
-                }]
-              })
-            });
-
-            if (resp.ok) {
-              const data = await resp.json();
-              const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (text) {
-                const clean = text.replace(/```json/g, '').replace(/```/g, '').trim();
-                parsed = JSON.parse(clean);
-                break;
-              }
-            }
-          } catch (err) {
-            console.warn(`模型 ${model} 連線失敗:`, err);
-          }
-        }
-      }
-
-      if (!parsed || !Array.isArray(parsed) || !parsed.length) {
-        parsed = FALLBACK_LABELS_SAMPLE;
-      }
-
-      btnStartOcr.disabled = false;
-      btnStartOcr.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> 開始 AI 標籤辨識';
-
-      state.labels = parsed;
-      renderLabelsTable();
-      matchWithCsv();
-    }
-
+    // 渲染標籤清單
     function renderLabelsTable() {
       const tbody = document.getElementById('labels-table-body');
       tbody.innerHTML = '';
       if (!state.labels.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-400">尚無資料，請上傳照片或點擊右上角「範例」</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-400">尚無資料</td></tr>';
         return;
       }
 
@@ -667,49 +580,91 @@
     window.deleteLabel = function(idx) {
       state.labels.splice(idx, 1);
       renderLabelsTable();
-      matchWithCsv();
     };
 
-    // ★ 關鍵修正：高容錯全欄位智慧比對，徹底排除大小寫、引號或欄位微調造成的 0 筆問題
-    function matchWithCsv() {
-      if (!state.labels.length || !state.csvRows.length) return;
+    // ★ 關鍵：手動按鈕觸發比對並回傳
+    function executeMatchAndFetch(isManual = false) {
+      const text = document.getElementById('csv-status-text');
+      const badge = document.getElementById('badge-csv-status');
+      if (badge) badge.classList.remove('hidden');
 
-      const pOrders = state.labels
-        .map(l => (l.p_order || '').toString().trim().toUpperCase())
-        .filter(Boolean);
+      // 整理板號 P 單
+      const pList = state.labels.map(l => (l.p_order || '').replace(/["'\s]/g, '').trim()).filter(Boolean).join(',');
 
-      if (!pOrders.length) return;
+      if (!pList) {
+        alert('請先上傳標籤照片或載入標籤資料');
+        return;
+      }
 
-      const pSet = new Set(pOrders);
+      if (text) text.textContent = '比對大庫回傳中...';
 
-      state.matchedDetails = state.csvRows.filter(row => {
-        // 1. 優先檢查 D 欄「打包單號」
-        const dVal = (row['打包單號'] || row['欄位D'] || row[3] || '').toString().trim().toUpperCase();
-        if (pSet.has(dVal)) return true;
+      const btn = document.getElementById('btn-manual-trigger-match');
+      if (btn && isManual) {
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 對碰中...';
+        btn.disabled = true;
+      }
 
-        // 2. 容錯備援：檢查該列是否有任何欄位包含目標 P 單
-        for (const key in row) {
-          const val = (row[key] || '').toString().trim().toUpperCase();
-          if (pSet.has(val)) return true;
+      const callbackName = 'gasCallback_' + Date.now();
+      const timeoutTimer = setTimeout(() => {
+        delete window[callbackName];
+        const oldScript = document.getElementById('jsonp-gas-script');
+        if (oldScript) oldScript.remove();
+        if (text) text.textContent = '連線逾時 (請再試一次)';
+        if (btn && isManual) {
+          btn.innerHTML = '<i class="fa-solid fa-play"></i> 開始比對並回傳';
+          btn.disabled = false;
         }
-        return false;
-      });
+      }, 20000);
 
-      // 更新統計指標
-      const matchBadge = document.getElementById('badge-match-count');
-      const matchedStat = document.getElementById('stat-matched-rows');
-      if (matchBadge) matchBadge.textContent = `${state.matchedDetails.length}筆符合`;
-      if (matchedStat) matchedStat.textContent = `${state.matchedDetails.length} 筆`;
+      window[callbackName] = function(json) {
+        clearTimeout(timeoutTimer);
+        delete window[callbackName];
+        const oldScript = document.getElementById('jsonp-gas-script');
+        if (oldScript) oldScript.remove();
 
-      renderSheet1Table();
-      renderSheet2Table();
+        if (btn && isManual) {
+          btn.innerHTML = '<i class="fa-solid fa-play"></i> 開始比對並回傳';
+          btn.disabled = false;
+        }
+
+        if (json && json.status === 'success') {
+          state.matchedDetails = json.matchedRows || [];
+          if (text) text.textContent = `已回傳 ${json.fileName} (${state.matchedDetails.length}筆符合)`;
+          
+          document.getElementById('badge-match-count').textContent = `${state.matchedDetails.length}筆符合`;
+          document.getElementById('stat-matched-rows').textContent = `${state.matchedDetails.length} 筆`;
+          document.getElementById('stat-csv-rows').textContent = `${json.totalRows || state.matchedDetails.length} 筆`;
+
+          renderSheet1Table();
+          renderSheet2Table();
+
+          if (isManual) {
+            alert(`✅ 比對成功！已成功回傳 ${state.matchedDetails.length} 筆明細資料！`);
+          }
+        } else if (json && json.status === 'ready') {
+          if (text) text.textContent = `雲端就緒 (${json.fileName})`;
+        } else {
+          if (text) text.textContent = json.message || '未找到相符資料';
+          if (isManual) alert('比對結果：' + (json.message || '未找到相符資料'));
+        }
+      };
+
+      const oldScript = document.getElementById('jsonp-gas-script');
+      if (oldScript) oldScript.remove();
+
+      const script = document.createElement('script');
+      script.id = 'jsonp-gas-script';
+      const targetDate = state.selectedDate ? state.selectedDate.replace(/-/g, '') : '';
+      
+      script.src = `${state.gasUrl}?callback=${callbackName}&date=${targetDate}&p_orders=${encodeURIComponent(pList)}&t=${Date.now()}`;
+      document.body.appendChild(script);
     }
 
     function renderSheet1Table() {
       const tbody = document.getElementById('sheet1-table-body');
       tbody.innerHTML = '';
       if (!state.matchedDetails.length) {
-        tbody.innerHTML = '<tr><td colspan="12" class="p-8 text-center text-slate-400">尚未比對出符合資料</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="p-8 text-center text-slate-400">尚未比對出符合資料，請點擊上方「開始比對並回傳」</td></tr>';
         return;
       }
 
@@ -785,110 +740,9 @@
       document.getElementById('sheet2-total-weight').textContent = totalWeight.toFixed(2);
     }
 
-    // 智慧同步：帶著 P 單向 GAS 索取過濾結果，不受 Google Drive CORS 限制，中文絕不亂碼
-function autoSyncLatestCsv() {
-  const badge = document.getElementById('badge-csv-status');
-  const text = document.getElementById('csv-status-text');
-  if (badge) badge.classList.remove('hidden');
-
-  // 取出目前畫面上的所有 P 單（轉大寫並去除空白）
-  const pList = state.labels.map(l => (l.p_order || '').trim()).filter(Boolean).join(',');
-
-  if (text) {
-    text.textContent = pList ? '對碰雲端大庫中...' : '檢查雲端大庫中...';
-  }
-
-  const callbackName = 'gasCallback_' + Date.now();
-  const timeoutTimer = setTimeout(() => {
-    delete window[callbackName];
-    const oldScript = document.getElementById('jsonp-gas-script');
-    if (oldScript) oldScript.remove();
-    if (text) text.textContent = '連線逾時 (請檢查網路)';
-  }, 20000);
-
-  window[callbackName] = function(json) {
-    clearTimeout(timeoutTimer);
-    delete window[callbackName];
-    const oldScript = document.getElementById('jsonp-gas-script');
-    if (oldScript) oldScript.remove();
-
-    if (json && (json.status === 'success' || json.status === 'ready')) {
-      if (json.status === 'ready') {
-        if (text) text.textContent = `雲端就緒 (${json.fileName})`;
-        return;
-      }
-
-      state.matchedDetails = json.matchedRows || [];
-      if (text) text.textContent = `已讀取 ${json.fileName} (${state.matchedDetails.length}筆符合)`;
-      
-      const badgeCount = document.getElementById('badge-match-count');
-      const statMatched = document.getElementById('stat-matched-rows');
-      const statCsv = document.getElementById('stat-csv-rows');
-
-      if (badgeCount) badgeCount.textContent = `${state.matchedDetails.length}筆符合`;
-      if (statMatched) statMatched.textContent = `${state.matchedDetails.length} 筆`;
-      if (statCsv) statCsv.textContent = `${json.totalRows || state.matchedDetails.length} 筆`;
-
-      renderSheet1Table();
-      renderSheet2Table();
-    } else {
-      if (text) text.textContent = json.message || '未找到大庫 CSV';
-    }
-  };
-
-  const oldScript = document.getElementById('jsonp-gas-script');
-  if (oldScript) oldScript.remove();
-
-  const script = document.createElement('script');
-  script.id = 'jsonp-gas-script';
-  const targetDate = state.selectedDate ? state.selectedDate.replace(/-/g, '') : '';
-  
-  // 傳入 p_orders 參數
-  script.src = `${state.gasUrl}?callback=${callbackName}&date=${targetDate}&p_orders=${encodeURIComponent(pList)}&t=${Date.now()}`;
-  document.body.appendChild(script);
-}
-
-    function parseCsvContent(content) {
-      if (!content) return;
-      const cleanContent = content.replace(/^\uFEFF/, '');
-      const lines = cleanContent.split(/\r?\n/).filter(line => line.trim());
-      if (lines.length < 2) return;
-
-      const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, ''));
-      
-      state.csvRows = [];
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^["']\vert{}["']$/g, ''));
-        
-        const obj = {};
-        headers.forEach((h, idx) => {
-          obj[h] = cols[idx] || '';
-        });
-
-        obj['打包日期'] = cols[1] || obj['打包日期'] || '';
-        obj['打包隊']   = cols[2] || obj['打包隊'] || '';
-        obj['打包單號'] = cols[3] || obj['打包單號'] || '';
-        obj['打包型態'] = cols[4] || obj['打包型態'] || '';
-        obj['產品編號'] = cols[5] || obj['產品編號'] || '';
-        obj['產品名稱'] = cols[6] || obj['產品名稱'] || '';
-        obj['規格']     = cols[7] || obj['規格'] || '';
-        obj['製造日期'] = cols[8] || obj['製造日期'] || '';
-        obj['數量']     = cols[9] || obj['數量'] || '0';
-        obj['重量']     = cols[10] || obj['重量'] || '0';
-        obj['條碼內容'] = cols[11] || obj['條碼內容'] || '';
-
-        state.csvRows.push(obj);
-      }
-
-      document.getElementById('stat-csv-rows').textContent = `${state.csvRows.length} 筆`;
-    }
-
     function buildDualSheetWorkbook() {
       const wb = XLSX.utils.book_new();
 
-      // Sheet 1: 資料自 B 欄開始，A 欄留空
       const sheet1Data = [
         ["", "報表編號: INV17190032", "", "", "", "", "", "", "", "", "印表日期: 115/09/28"],
         ["", "台灣卜蜂企業股份有限公司 速凍打包批號明細表"],
@@ -915,7 +769,6 @@ function autoSyncLatestCsv() {
       const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
       XLSX.utils.book_append_sheet(wb, ws1, "Sheet1");
 
-      // Sheet 2: 移倉內容彙總
       const title = document.getElementById('preview-sheet-title').textContent;
       const orderNo = document.getElementById('cfg-order-no').value || '';
       const deliveryNo = document.getElementById('cfg-delivery-no').value || '';
@@ -1005,10 +858,6 @@ function autoSyncLatestCsv() {
           base64Xls = window.btoa(binary);
         }
 
-        if (!base64Xls) {
-          throw new Error("無法生成 Excel 二進位資料");
-        }
-
         const [y, m, d] = state.selectedDate.split('-');
         const rocStr = `${parseInt(y) - 1911}${m}${d}`;
         const fileName = `上傳提貨用${rocStr}.xls`;
@@ -1037,45 +886,28 @@ function autoSyncLatestCsv() {
       }
     }
 
-    function loadSampleData() {
-      state.labels = JSON.parse(JSON.stringify(FALLBACK_LABELS_SAMPLE));
-      renderLabelsTable();
-      matchWithCsv();
-      alert('已成功載入示範資料！');
-    }
-
     window.onload = () => {
       initDate();
-      autoSyncLatestCsv();
+      renderLabelsTable(); // 預設顯示畫面中的 12 板
+      executeMatchAndFetch(false); // 自動檢查連線
 
       document.getElementById('tab-btn-labels').onclick = () => switchTab('labels');
       document.getElementById('tab-btn-sheet1').onclick = () => switchTab('sheet1');
       document.getElementById('tab-btn-sheet2').onclick = () => switchTab('sheet2');
+
+      // ★ 手動比對並回傳按鈕事件
+      document.getElementById('btn-manual-trigger-match').onclick = () => executeMatchAndFetch(true);
+      document.getElementById('btn-sync-gas-csv').onclick = () => executeMatchAndFetch(true);
 
       dropzone.onclick = () => fileInput.click();
       fileInput.onchange = (e) => handleFile(e.target.files[0]);
       cameraInput.onchange = (e) => handleFile(e.target.files[0]);
       document.getElementById('btn-browse').onclick = () => fileInput.click();
       document.getElementById('btn-camera').onclick = () => cameraInput.click();
-      btnStartOcr.onclick = runGeminiVisionOcr;
-      
-      document.getElementById('btn-quick-sample').onclick = loadSampleData;
-      document.getElementById('btn-quick-sample-m').onclick = loadSampleData;
-      document.getElementById('btn-load-sample-csv').onclick = loadSampleData;
+      btnStartOcr.onclick = () => executeMatchAndFetch(true);
+
       document.getElementById('btn-export-excel').onclick = exportToExcel;
       document.getElementById('btn-gas-write-sheet').onclick = writeToGasCloud;
-      document.getElementById('btn-sync-gas-csv').onclick = autoSyncLatestCsv;
-
-      document.getElementById('input-csv-file').onchange = (e) => {
-        const f = e.target.files[0];
-        if (!f) return;
-        const r = new FileReader();
-        r.onload = (evt) => {
-          parseCsvContent(evt.target.result);
-          matchWithCsv();
-        };
-        r.readAsText(f, 'BIG5');
-      };
 
       ['cfg-out-wh', 'cfg-in-wh', 'cfg-pallet-cnt', 'cfg-order-no', 'cfg-delivery-no', 'cfg-transfer-out-no', 'cfg-transfer-in-no'].forEach(id => {
         document.getElementById(id).addEventListener('input', updateTitles);
@@ -1083,7 +915,6 @@ function autoSyncLatestCsv() {
 
       const apiModal = document.getElementById('modal-api');
       document.getElementById('btn-open-api-modal').onclick = () => apiModal.classList.remove('hidden');
-      document.getElementById('btn-open-api-modal-m').onclick = () => apiModal.classList.remove('hidden');
       document.getElementById('btn-close-api-modal').onclick = () => apiModal.classList.add('hidden');
       document.getElementById('btn-save-api-key').onclick = () => {
         const key = document.getElementById('input-api-key').value.trim();

@@ -41,13 +41,16 @@
         </div>
       </div>
 
-      <!-- 移倉日期選擇器與狀態 -->
+      <!-- 移倉日期選擇器 (預設自動同步今天) 與狀態 -->
       <div class="flex flex-wrap items-center gap-2">
         <div class="flex items-center bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-700">
           <i class="fa-regular fa-calendar-days text-emerald-600 mr-2"></i>
           <span class="font-medium mr-1.5 whitespace-nowrap">移倉日期:</span>
           <input type="date" id="input-transfer-date" class="bg-transparent border-0 outline-none text-slate-900 font-bold cursor-pointer">
-          <span id="badge-transfer-roc" class="ml-1.5 px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] rounded font-mono font-medium">民國1150928</span>
+          <span id="badge-transfer-roc" class="ml-1.5 px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] rounded font-mono font-medium">民國1150930</span>
+          <button id="btn-sync-today" class="ml-1.5 px-1.5 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-[11px] rounded transition font-medium" title="同步為今天日期">
+            今天
+          </button>
         </div>
 
         <div id="badge-csv-status" class="hidden md:flex items-center px-2.5 py-1.5 bg-emerald-50 text-emerald-700 text-xs rounded-lg border border-emerald-200">
@@ -233,7 +236,7 @@
           <h3 class="text-xs font-bold text-amber-900 flex items-center gap-1.5">
             <i class="fa-solid fa-sliders text-amber-600"></i> 移倉單據參數設定
           </h3>
-          <span class="text-xs text-amber-800 font-medium">預覽主題：<span id="preview-sheet-title" class="font-bold font-mono">9/28廣榮移盛立12板</span></span>
+          <span class="text-xs text-amber-800 font-medium">預覽主題：<span id="preview-sheet-title" class="font-bold font-mono">9/30廣榮移盛立12板</span></span>
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 text-xs">
           <div>
@@ -278,10 +281,9 @@
             </p>
           </div>
 
-          <!-- 操作按鈕列 (包含全新手動按鈕) -->
           <div class="flex flex-wrap items-center gap-2">
-            <!-- ★ 全新手動比對按鈕 -->
-            <button id="btn-manual-trigger-match" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md transition animate-pulse">
+            <!-- 手動比對按鈕 -->
+            <button id="btn-manual-trigger-match" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md transition">
               <i class="fa-solid fa-play"></i> 開始比對並回傳
             </button>
             <button id="btn-sync-gas-csv" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
@@ -320,13 +322,13 @@
         <div class="border-b border-slate-200 pb-3 text-center relative">
           <div class="text-left text-[11px] text-slate-500 absolute left-0 top-0">報表編號: INV17190032</div>
           <div class="text-right text-[11px] text-slate-500 absolute right-0 top-0">
-            印表日期: 115/09/28<br>印表時間: 09:14:28
+            印表日期: 115/09/30<br>印表時間: 09:14:28
           </div>
           <h2 class="text-base font-bold text-slate-900 tracking-wider">台灣卜蜂企業股份有限公司</h2>
           <h3 class="text-sm font-bold text-slate-800 tracking-wider mt-0.5">速凍打包批號明細表 (Sheet 1)</h3>
           <div class="flex items-center justify-between text-[11px] text-slate-500 mt-3 pt-1">
             <span>查詢條件: 依相片板號 P 單比對明細</span>
-            <span>目標檔名: <b id="lbl-dest-filename" class="text-indigo-700 font-mono">上傳提貨用1150928.xls</b></span>
+            <span>目標檔名: <b id="lbl-dest-filename" class="text-indigo-700 font-mono">上傳提貨用1150930.xls</b></span>
           </div>
         </div>
 
@@ -364,7 +366,7 @@
         <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
             <h2 id="sheet2-main-title" class="text-xl md:text-2xl font-black text-amber-700 font-mono">
-              9/28廣榮移盛立12板
+              9/30廣榮移盛立12板
             </h2>
             <p class="text-xs text-slate-500 mt-1">工作表：移倉內容彙總 (依照第3張圖片格式自動分組統計)</p>
           </div>
@@ -444,11 +446,11 @@
     </div>
   </div>
 
-  <!-- JavaScript 核心程式碼 -->
+  <!-- JavaScript 核心邏輯 -->
   <script>
     const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbzNFID1CjhHMrzs7vhFqX4zWdkD5u8W0DnmO_VEtZsK7AT1Pke8vVlPjRs2P-dLUJKRCA/exec";
     
-    // 與相片 45949.jpg 完全吻合的 12 板實體標籤資料
+    // 實體照片 12 板標籤資料
     const FALLBACK_LABELS_SAMPLE = [
       { product_code: "5105000012", product_name: "雞排XL", p_order: "P681591020", seq: "10", boxes: "42箱", date: "115/09/24" },
       { product_code: "5105000032", product_name: "雞排TS3", p_order: "P681591022", seq: "9", boxes: "42箱", date: "115/09/24" },
@@ -467,9 +469,9 @@
     let state = {
       apiKey: localStorage.getItem('gemini_api_key') || '',
       gasUrl: localStorage.getItem('gas_web_app_url') || DEFAULT_GAS_URL,
-      selectedDate: '2026-09-28',
+      selectedDate: '', // 初始化時自動設為今天
       currentImageBase64: null,
-      labels: JSON.parse(JSON.stringify(FALLBACK_LABELS_SAMPLE)), // 預設直接載入 12 板
+      labels: JSON.parse(JSON.stringify(FALLBACK_LABELS_SAMPLE)),
       csvRows: [],
       matchedDetails: []
     };
@@ -480,14 +482,34 @@
     const imagePreview = document.getElementById('image-preview');
     const btnStartOcr = document.getElementById('btn-start-ocr');
 
+    // ★ 自動取得今天日期 YYYY-MM-DD
+    function getTodayString() {
+      const today = new Date();
+      const y = today.getFullYear();
+      const m = String(today.getMonth() + 1).padStart(2, '0');
+      const d = String(today.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
     function initDate() {
+      const todayStr = getTodayString();
+      state.selectedDate = todayStr;
+      
       const dateInput = document.getElementById('input-transfer-date');
-      dateInput.value = state.selectedDate;
-      updateRocDate(state.selectedDate);
+      dateInput.value = todayStr;
+      updateRocDate(todayStr);
+
       dateInput.addEventListener('change', (e) => {
         state.selectedDate = e.target.value;
         updateRocDate(state.selectedDate);
-        updateTitles();
+      });
+
+      // 點擊「今天」按鈕快捷重設
+      document.getElementById('btn-sync-today').addEventListener('click', () => {
+        const curToday = getTodayString();
+        state.selectedDate = curToday;
+        dateInput.value = curToday;
+        updateRocDate(curToday);
       });
     }
 
@@ -502,6 +524,7 @@
     }
 
     function updateTitles() {
+      if (!state.selectedDate) return;
       const [y, m, d] = state.selectedDate.split('-');
       const outWh = document.getElementById('cfg-out-wh').value || '廣榮';
       const inWh = document.getElementById('cfg-in-wh').value || '盛立';
@@ -541,7 +564,6 @@
       reader.readAsDataURL(file);
     }
 
-    // 渲染標籤清單
     function renderLabelsTable() {
       const tbody = document.getElementById('labels-table-body');
       tbody.innerHTML = '';
@@ -582,13 +604,12 @@
       renderLabelsTable();
     };
 
-    // ★ 關鍵：手動按鈕觸發比對並回傳
+    // ★ 關鍵：手動比對並回傳 (拉長超時至 35 秒，不因單日無檔而卡死)
     function executeMatchAndFetch(isManual = false) {
       const text = document.getElementById('csv-status-text');
       const badge = document.getElementById('badge-csv-status');
       if (badge) badge.classList.remove('hidden');
 
-      // 整理板號 P 單
       const pList = state.labels.map(l => (l.p_order || '').replace(/["'\s]/g, '').trim()).filter(Boolean).join(',');
 
       if (!pList) {
@@ -605,16 +626,18 @@
       }
 
       const callbackName = 'gasCallback_' + Date.now();
+      
+      // 容許大檔案充足時間處理
       const timeoutTimer = setTimeout(() => {
         delete window[callbackName];
         const oldScript = document.getElementById('jsonp-gas-script');
         if (oldScript) oldScript.remove();
-        if (text) text.textContent = '連線逾時 (請再試一次)';
+        if (text) text.textContent = '連線逾時 (請檢查雲端資料夾)';
         if (btn && isManual) {
           btn.innerHTML = '<i class="fa-solid fa-play"></i> 開始比對並回傳';
           btn.disabled = false;
         }
-      }, 20000);
+      }, 35000);
 
       window[callbackName] = function(json) {
         clearTimeout(timeoutTimer);
@@ -639,7 +662,9 @@
           renderSheet2Table();
 
           if (isManual) {
-            alert(`✅ 比對成功！已成功回傳 ${state.matchedDetails.length} 筆明細資料！`);
+            // 自動切換到第 2 頁提貨表
+            switchTab('sheet1');
+            alert(`✅ 比對成功！已成功回傳 ${state.matchedDetails.length} 筆符合明細！`);
           }
         } else if (json && json.status === 'ready') {
           if (text) text.textContent = `雲端就緒 (${json.fileName})`;
@@ -654,9 +679,9 @@
 
       const script = document.createElement('script');
       script.id = 'jsonp-gas-script';
-      const targetDate = state.selectedDate ? state.selectedDate.replace(/-/g, '') : '';
       
-      script.src = `${state.gasUrl}?callback=${callbackName}&date=${targetDate}&p_orders=${encodeURIComponent(pList)}&t=${Date.now()}`;
+      // 傳入 P 單，GAS 雲端若找不到特定日期檔案，會自動抓最新上傳的 CSV 進行比對
+      script.src = `${state.gasUrl}?callback=${callbackName}&p_orders=${encodeURIComponent(pList)}&t=${Date.now()}`;
       document.body.appendChild(script);
     }
 
@@ -743,8 +768,11 @@
     function buildDualSheetWorkbook() {
       const wb = XLSX.utils.book_new();
 
+      const [y, m, d] = state.selectedDate.split('-');
+      const rocYear = parseInt(y) - 1911;
+
       const sheet1Data = [
-        ["", "報表編號: INV17190032", "", "", "", "", "", "", "", "", "印表日期: 115/09/28"],
+        ["", "報表編號: INV17190032", "", "", "", "", "", "", "", "", `印表日期: ${rocYear}/${m}/${d}`],
         ["", "台灣卜蜂企業股份有限公司 速凍打包批號明細表"],
         ["", "打包日期", "打包隊", "打包單號", "打包型態", "產品編號", "產品名稱", "規格", "製造日期", "數量", "重量", "條碼內容"]
       ];
@@ -843,7 +871,6 @@
 
       try {
         const wb = buildDualSheetWorkbook();
-        
         let base64Xls = "";
         try {
           base64Xls = XLSX.write(wb, { bookType: 'biff8', type: 'base64' });
@@ -856,6 +883,10 @@
             binary += String.fromCharCode(bytes[i]);
           }
           base64Xls = window.btoa(binary);
+        }
+
+        if (!base64Xls) {
+          throw new Error("無法生成 Excel 二進位資料");
         }
 
         const [y, m, d] = state.selectedDate.split('-');
@@ -887,15 +918,15 @@
     }
 
     window.onload = () => {
-      initDate();
-      renderLabelsTable(); // 預設顯示畫面中的 12 板
-      executeMatchAndFetch(false); // 自動檢查連線
+      initDate(); // 自動帶入今天 (2026-09-30)
+      renderLabelsTable(); // 預設顯示畫面中 12 板標籤
+      executeMatchAndFetch(false); // 自動探測雲端就緒狀態
 
       document.getElementById('tab-btn-labels').onclick = () => switchTab('labels');
       document.getElementById('tab-btn-sheet1').onclick = () => switchTab('sheet1');
       document.getElementById('tab-btn-sheet2').onclick = () => switchTab('sheet2');
 
-      // ★ 手動比對並回傳按鈕事件
+      // 手動比對並回傳
       document.getElementById('btn-manual-trigger-match').onclick = () => executeMatchAndFetch(true);
       document.getElementById('btn-sync-gas-csv').onclick = () => executeMatchAndFetch(true);
 
@@ -929,7 +960,6 @@
       const gasModal = document.getElementById('modal-gas');
       document.getElementById('input-gas-url').value = state.gasUrl;
       document.getElementById('btn-open-gas-modal').onclick = () => gasModal.classList.remove('hidden');
-      document.getElementById('btn-open-gas-modal-m').onclick = () => gasModal.classList.remove('hidden');
       document.getElementById('btn-close-gas-modal').onclick = () => gasModal.classList.add('hidden');
       document.getElementById('btn-save-gas-url').onclick = () => {
         const url = document.getElementById('input-gas-url').value.trim();

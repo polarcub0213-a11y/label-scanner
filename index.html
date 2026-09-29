@@ -769,50 +769,73 @@
       document.getElementById('sheet2-total-weight').textContent = totalWeight.toFixed(2);
     }
 
-    // 增強型自動同步 (JSONP 優先穿透)
-    function autoSyncLatestCsv() {
-      const badge = document.getElementById('badge-csv-status');
-      const text = document.getElementById('csv-status-text');
-      badge.classList.remove('hidden');
-      text.textContent = '雲端同步中...';
+    // 增強型自動同步：放寬大檔讀取時間至 45 秒，並支援雙軌連線
+function autoSyncLatestCsv() {
+  const badge = document.getElementById('badge-csv-status');
+  const text = document.getElementById('csv-status-text');
+  if (badge) badge.classList.remove('hidden');
+  if (text) text.textContent = '大庫同步中(檔案較大請稍候)...';
 
-      const callbackName = 'gasCallback_' + Date.now();
-      const timeoutTimer = setTimeout(() => {
-        delete window[callbackName];
-        const oldScript = document.getElementById('jsonp-gas-script');
-        if (oldScript) oldScript.remove();
-        text.textContent = '雲端連線逾時 (可手動上傳)';
-      }, 10000);
+  const callbackName = 'gasCallback_' + Date.now();
+  
+  // 大庫檔案資料量大（3~5MB），將逾時拉長至 45 秒避免誤判
+  const timeoutTimer = setTimeout(() => {
+    delete window[callbackName];
+    const oldScript = document.getElementById('jsonp-gas-script');
+    if (oldScript) oldScript.remove();
+    if (text) text.textContent = '雲端連線逾時 (請點此手動上傳)';
+  }, 45000);
 
-      window[callbackName] = function(json) {
+  window[callbackName] = function(json) {
+    clearTimeout(timeoutTimer);
+    delete window[callbackName];
+    const oldScript = document.getElementById('jsonp-gas-script');
+    if (oldScript) oldScript.remove();
+
+    if (json && json.status === 'success' && json.csvContent) {
+      parseCsvContent(json.csvContent);
+      if (text) text.textContent = `已讀取 ${json.fileName || '大庫'} (${state.csvRows.length}筆)`;
+      matchWithCsv();
+    } else {
+      if (text) text.textContent = '未找到大庫 CSV (請點此手動上傳)';
+    }
+  };
+
+  const oldScript = document.getElementById('jsonp-gas-script');
+  if (oldScript) oldScript.remove();
+
+  // 嘗試以 JSONP 抓取
+  const script = document.createElement('script');
+  script.id = 'jsonp-gas-script';
+  const targetDate = state.selectedDate ? state.selectedDate.replace(/-/g, '') : '';
+  script.src = `${state.gasUrl}?callback=${callbackName}&date=${targetDate}&t=${Date.now()}`;
+  
+  script.onerror = async function() {
+    // 若 JSONP 失敗，自動切換標準 fetch 備援嘗試
+    try {
+      const resp = await fetch(`${state.gasUrl}?date=${targetDate}&t=${Date.now()}`);
+      if (resp.ok) {
+        const json = await resp.json();
         clearTimeout(timeoutTimer);
         delete window[callbackName];
-        const oldScript = document.getElementById('jsonp-gas-script');
         if (oldScript) oldScript.remove();
-
         if (json && json.status === 'success' && json.csvContent) {
           parseCsvContent(json.csvContent);
-          text.textContent = `已讀取 ${json.fileName || '大庫'} (${state.csvRows.length}筆)`;
+          if (text) text.textContent = `已讀取 ${json.fileName || '大庫'} (${state.csvRows.length}筆)`;
           matchWithCsv();
-        } else {
-          text.textContent = '未找到大庫 CSV';
+          return;
         }
-      };
-
-      const oldScript = document.getElementById('jsonp-gas-script');
-      if (oldScript) oldScript.remove();
-
-      const script = document.createElement('script');
-      script.id = 'jsonp-gas-script';
-      const targetDate = state.selectedDate ? state.selectedDate.replace(/-/g, '') : '';
-      script.src = `${state.gasUrl}?callback=${callbackName}&date=${targetDate}&t=${Date.now()}`;
-      script.onerror = function() {
-        clearTimeout(timeoutTimer);
-        delete window[callbackName];
-        text.textContent = '連線失敗，請檢查權限';
-      };
-      document.body.appendChild(script);
+      }
+    } catch (e) {
+      console.warn('備援 fetch 亦受阻:', e);
     }
+    clearTimeout(timeoutTimer);
+    delete window[callbackName];
+    if (text) text.textContent = '連線失敗 (請檢查 GAS 權限或手動上傳)';
+  };
+
+  document.body.appendChild(script);
+}
 
     function parseCsvContent(content) {
       const lines = content.split(/\r?\n/).filter(line => line.trim());

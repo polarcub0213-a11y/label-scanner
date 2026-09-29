@@ -769,16 +769,14 @@
       document.getElementById('sheet2-total-weight').textContent = totalWeight.toFixed(2);
     }
 
-    // 增強型自動同步：放寬大檔讀取時間至 45 秒，並支援雙軌連線
+// 增強型自動同步：接收 Base64 並使用瀏覽器原生 TextDecoder('big5') 解碼，徹底防亂碼
 function autoSyncLatestCsv() {
   const badge = document.getElementById('badge-csv-status');
   const text = document.getElementById('csv-status-text');
   if (badge) badge.classList.remove('hidden');
-  if (text) text.textContent = '大庫同步中(檔案較大請稍候)...';
+  if (text) text.textContent = '大庫同步中(解析編碼)...';
 
   const callbackName = 'gasCallback_' + Date.now();
-  
-  // 大庫檔案資料量大（3~5MB），將逾時拉長至 45 秒避免誤判
   const timeoutTimer = setTimeout(() => {
     delete window[callbackName];
     const oldScript = document.getElementById('jsonp-gas-script');
@@ -786,54 +784,54 @@ function autoSyncLatestCsv() {
     if (text) text.textContent = '雲端連線逾時 (請點此手動上傳)';
   }, 45000);
 
+  // 處理接收到的資料
   window[callbackName] = function(json) {
     clearTimeout(timeoutTimer);
     delete window[callbackName];
     const oldScript = document.getElementById('jsonp-gas-script');
     if (oldScript) oldScript.remove();
 
-    if (json && json.status === 'success' && json.csvContent) {
-      parseCsvContent(json.csvContent);
-      if (text) text.textContent = `已讀取 ${json.fileName || '大庫'} (${state.csvRows.length}筆)`;
-      matchWithCsv();
-    } else {
-      if (text) text.textContent = '未找到大庫 CSV (請點此手動上傳)';
+    if (json && json.status === 'success') {
+      let decodedContent = "";
+
+      // 優先使用二進位 Base64 進行瀏覽器 Big5 解碼
+      if (json.csvBase64) {
+        try {
+          const binaryStr = window.atob(json.csvBase64);
+          const len = binaryStr.length;
+          const bytes = new Uint8Array(len);
+          for (let i = 0; i < len; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+          }
+          // 瀏覽器原生的 Big5 解碼器（完整支援 CP950 擴充字集）
+          const decoder = new TextDecoder('big5');
+          decodedContent = decoder.decode(bytes);
+        } catch (decodeErr) {
+          console.warn("Base64 解碼失敗，使用純文字:", decodeErr);
+          decodedContent = json.csvContent || "";
+        }
+      } else {
+        decodedContent = json.csvContent || "";
+      }
+
+      if (decodedContent) {
+        parseCsvContent(decodedContent);
+        if (text) text.textContent = `已讀取 ${json.fileName || '大庫'} (${state.csvRows.length}筆)`;
+        matchWithCsv();
+        return;
+      }
     }
+    
+    if (text) text.textContent = '未找到大庫 CSV (請點此手動上傳)';
   };
 
   const oldScript = document.getElementById('jsonp-gas-script');
   if (oldScript) oldScript.remove();
 
-  // 嘗試以 JSONP 抓取
   const script = document.createElement('script');
   script.id = 'jsonp-gas-script';
   const targetDate = state.selectedDate ? state.selectedDate.replace(/-/g, '') : '';
   script.src = `${state.gasUrl}?callback=${callbackName}&date=${targetDate}&t=${Date.now()}`;
-  
-  script.onerror = async function() {
-    // 若 JSONP 失敗，自動切換標準 fetch 備援嘗試
-    try {
-      const resp = await fetch(`${state.gasUrl}?date=${targetDate}&t=${Date.now()}`);
-      if (resp.ok) {
-        const json = await resp.json();
-        clearTimeout(timeoutTimer);
-        delete window[callbackName];
-        if (oldScript) oldScript.remove();
-        if (json && json.status === 'success' && json.csvContent) {
-          parseCsvContent(json.csvContent);
-          if (text) text.textContent = `已讀取 ${json.fileName || '大庫'} (${state.csvRows.length}筆)`;
-          matchWithCsv();
-          return;
-        }
-      }
-    } catch (e) {
-      console.warn('備援 fetch 亦受阻:', e);
-    }
-    clearTimeout(timeoutTimer);
-    delete window[callbackName];
-    if (text) text.textContent = '連線失敗 (請檢查 GAS 權限或手動上傳)';
-  };
-
   document.body.appendChild(script);
 }
 

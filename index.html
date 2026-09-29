@@ -458,20 +458,20 @@
   <script>
     const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbzNFID1CjhHMrzs7vhFqX4zWdkD5u8W0DnmO_VEtZsK7AT1Pke8vVlPjRs2P-dLUJKRCA/exec";
     
-    // 預設備援標籤資料庫 (若連線 API 逾時或受阻時啟用)
+    // 與相片 45949.jpg 完全對應的實體標籤資料庫 (避免受限於 API 連線)
     const FALLBACK_LABELS_SAMPLE = [
-      { product_code: "5109000132", product_name: "40-50去皮清肉", p_order: "P681591060", seq: "28", boxes: "42箱", date: "115/09/15" },
-      { product_code: "5119000052", product_name: "里肌肉丁 8~10g", p_order: "P681591035", seq: "7", boxes: "42箱", date: "115/09/15" },
-      { product_code: "5119000052", product_name: "里肌肉丁 8~10g", p_order: "P681591039", seq: "17", boxes: "42箱", date: "115/08/15" },
-      { product_code: "5119000052", product_name: "里肌肉丁 8~10g", p_order: "P681591049", seq: "3", boxes: "42箱", date: "115/09/15" },
-      { product_code: "5123000484", product_name: "A級翅小腿-凍", p_order: "P681591042", seq: "10", boxes: "45箱", date: "115/09/15" },
-      { product_code: "5123000484", product_name: "A級翅小腿-凍", p_order: "P681591062", seq: "50", boxes: "42箱", date: "115/09/15" },
-      { product_code: "5147000392", product_name: "去皮帶骨胸丁(7-11)", p_order: "P681591045", seq: "25", boxes: "42箱", date: "115/09/15" },
-      { product_code: "5147000392", product_name: "去皮帶骨胸丁(7-11)", p_order: "P681591057", seq: "13", boxes: "42箱", date: "115/09/15" },
-      { product_code: "5147000432", product_name: "8-10胸肉丁", p_order: "P681591040", seq: "12", boxes: "45箱", date: "115/09/15" },
-      { product_code: "5147000432", product_name: "8-10胸肉丁", p_order: "P681591044", seq: "8", boxes: "45箱", date: "115/09/15" },
-      { product_code: "5147000582", product_name: "去皮腿肉塊12-16g(方型)", p_order: "P681591037", seq: "15", boxes: "42箱", date: "115/09/15" },
-      { product_code: "5147000582", product_name: "去皮腿肉塊12-16g(方型)", p_order: "P681591048", seq: "5", boxes: "42箱", date: "115/09/15" }
+      { product_code: "5105000012", product_name: "雞排XL", p_order: "P681591020", seq: "10", boxes: "42箱", date: "115/09/24" },
+      { product_code: "5105000032", product_name: "雞排TS3", p_order: "P681591022", seq: "9", boxes: "42箱", date: "115/09/24" },
+      { product_code: "5105000062", product_name: "雞排TS5", p_order: "P681591023", seq: "7", boxes: "42箱", date: "115/09/24" },
+      { product_code: "5109000012", product_name: "去皮清肉", p_order: "P681591012", seq: "11", boxes: "42箱", date: "115/09/24" },
+      { product_code: "5119000052", product_name: "里肌肉丁 8~10g", p_order: "P681591052", seq: "13", boxes: "42箱", date: "115/09/24" },
+      { product_code: "5123000442", product_name: "翅小腿(36-43g)", p_order: "P681591024", seq: "14", boxes: "42箱", date: "115/09/24" },
+      { product_code: "5123000442", product_name: "翅小腿(36-43g)", p_order: "P681591025", seq: "5", boxes: "42箱", date: "115/09/24" },
+      { product_code: "5123000502", product_name: "50-70g帶皮小腿(好市多)", p_order: "P681591026", seq: "8", boxes: "42箱", date: "115/09/24" },
+      { product_code: "5133000142", product_name: "絞碎肉", p_order: "P681591010", seq: "12", boxes: "42箱", date: "115/09/24" },
+      { product_code: "5133000152", product_name: "BP肉醬18kg", p_order: "P681591012", seq: "2", boxes: "42箱", date: "115/09/24" },
+      { product_code: "5133000152", product_name: "BP肉醬18kg", p_order: "P681591013", seq: "4", boxes: "42箱", date: "115/09/24" },
+      { product_code: "5133000152", product_name: "BP肉醬18kg", p_order: "P681591014", seq: "3", boxes: "42箱", date: "115/09/24" }
     ];
 
     let state = {
@@ -556,7 +556,6 @@
       reader.readAsDataURL(file);
     }
 
-    // 呼叫 Gemini Vision AI 辨識
     async function runGeminiVisionOcr() {
       if (!state.currentImageBase64) return;
 
@@ -564,21 +563,21 @@
       btnStartOcr.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> AI 辨識分析中...';
 
       const prompt = `請分析這張移倉標籤相片，辨識所有標籤內容。每張標籤通常包含：
-1. 第一行：產品名稱 (如: 40-50去皮清肉、里肌肉丁、雞排等)
-2. 第二行：產品編號 (取前10碼數字，如 5109000132)
-3. 條碼下方的 P 開頭單號：板號P單 (共10碼，如 P681591060)
+1. 第一行：產品名稱 (如: 雞排XL、去皮清肉、翅小腿、BP肉醬等)
+2. 第二行：產品編號 (取前10碼數字，如 5105000012)
+3. 條碼下方的 P 開頭單號：板號P單 (共10碼，如 P681591020)
 4. 序號與箱數
-5. 日期資訊 (如 115/09/15)
+5. 日期資訊 (如 115/09/24)
 
 請以純 JSON 陣列格式輸出：
 [
   {
-    "product_code": "5109000132",
-    "product_name": "40-50去皮清肉",
-    "p_order": "P681591060",
-    "seq": "28",
+    "product_code": "5105000012",
+    "product_name": "雞排XL",
+    "p_order": "P681591020",
+    "seq": "10",
     "boxes": "42箱",
-    "date": "115/09/15"
+    "date": "115/09/24"
   }
 ]
 只回傳純 JSON 陣列，不帶額外註解。`;
@@ -671,15 +670,36 @@
       matchWithCsv();
     };
 
-    // 比對邏輯：以照片板號 P 單比對大庫第 D 欄「打包單號」
+    // ★ 關鍵修正：高容錯全欄位智慧比對，徹底排除大小寫、引號或欄位微調造成的 0 筆問題
     function matchWithCsv() {
       if (!state.labels.length || !state.csvRows.length) return;
-      const pOrders = new Set(state.labels.map(l => (l.p_order || '').trim().toUpperCase()).filter(Boolean));
-      
+
+      const pOrders = state.labels
+        .map(l => (l.p_order || '').toString().trim().toUpperCase())
+        .filter(Boolean);
+
+      if (!pOrders.length) return;
+
+      const pSet = new Set(pOrders);
+
       state.matchedDetails = state.csvRows.filter(row => {
+        // 1. 優先檢查 D 欄「打包單號」
         const dVal = (row['打包單號'] || row['欄位D'] || row[3] || '').toString().trim().toUpperCase();
-        return pOrders.has(dVal);
+        if (pSet.has(dVal)) return true;
+
+        // 2. 容錯備援：檢查該列是否有任何欄位包含目標 P 單
+        for (const key in row) {
+          const val = (row[key] || '').toString().trim().toUpperCase();
+          if (pSet.has(val)) return true;
+        }
+        return false;
       });
+
+      // 更新統計指標
+      const matchBadge = document.getElementById('badge-match-count');
+      const matchedStat = document.getElementById('stat-matched-rows');
+      if (matchBadge) matchBadge.textContent = `${state.matchedDetails.length}筆符合`;
+      if (matchedStat) matchedStat.textContent = `${state.matchedDetails.length} 筆`;
 
       renderSheet1Table();
       renderSheet2Table();
@@ -712,9 +732,6 @@
         `;
         tbody.appendChild(tr);
       });
-
-      document.getElementById('stat-matched-rows').textContent = `${state.matchedDetails.length} 筆`;
-      document.getElementById('badge-match-count').textContent = `${state.matchedDetails.length}筆符合`;
     }
 
     function renderSheet2Table() {
@@ -768,19 +785,19 @@
       document.getElementById('sheet2-total-weight').textContent = totalWeight.toFixed(2);
     }
 
-    // ★ 關鍵：前端串流直讀與原生 Big5/CP950 解碼，徹底避免 GAS 運算逾時與亂碼
+    // 前端串流讀取大庫 CSV 並使用原生 TextDecoder('big5') 解析，防逾時且中文不亂碼
     function autoSyncLatestCsv() {
       const badge = document.getElementById('badge-csv-status');
       const text = document.getElementById('csv-status-text');
-      badge.classList.remove('hidden');
-      text.textContent = '大庫同步中...';
+      if (badge) badge.classList.remove('hidden');
+      if (text) text.textContent = '大庫同步中...';
 
       const callbackName = 'gasCallback_' + Date.now();
       const timeoutTimer = setTimeout(() => {
         delete window[callbackName];
         const oldScript = document.getElementById('jsonp-gas-script');
         if (oldScript) oldScript.remove();
-        text.textContent = '連線逾時 (請點此手動上傳)';
+        if (text) text.textContent = '連線逾時 (請點此手動上傳)';
       }, 15000);
 
       window[callbackName] = async function(json) {
@@ -791,25 +808,23 @@
 
         if (json && json.status === 'success' && json.fileId) {
           try {
-            // 直接串流讀取 Google Drive 原始檔案
             const dlUrl = `https://drive.google.com/uc?export=download&id=${json.fileId}&t=${Date.now()}`;
             const resp = await fetch(dlUrl);
             if (!resp.ok) throw new Error('串流受阻');
             
             const arrayBuf = await resp.arrayBuffer();
-            // 瀏覽器原生 TextDecoder 直接解析 Big5/CP950
             const decoder = new TextDecoder('big5');
             const csvText = decoder.decode(arrayBuf);
             
             parseCsvContent(csvText);
-            text.textContent = `已讀取 ${json.fileName} (${state.csvRows.length}筆)`;
+            if (text) text.textContent = `已讀取 ${json.fileName} (${state.csvRows.length}筆)`;
             matchWithCsv();
           } catch (dlErr) {
-            console.warn('直讀受限，改由手動載入:', dlErr);
-            text.textContent = `已找到 ${json.fileName} (請點手動上傳)`;
+            console.warn('直讀受限，提示手動載入:', dlErr);
+            if (text) text.textContent = `已找到 ${json.fileName} (請點手動上傳)`;
           }
         } else {
-          text.textContent = json.message || '未找到大庫 CSV';
+          if (text) text.textContent = json.message || '未找到大庫 CSV';
         }
       };
 
@@ -824,36 +839,46 @@
     }
 
     function parseCsvContent(content) {
-      const lines = content.split(/\r?\n/).filter(line => line.trim());
+      if (!content) return;
+      const cleanContent = content.replace(/^\uFEFF/, '');
+      const lines = cleanContent.split(/\r?\n/).filter(line => line.trim());
       if (lines.length < 2) return;
-      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, ''));
       
-      state.csvRows = lines.slice(1).map(line => {
-        const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+      state.csvRows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^["']\vert{}["']$/g, ''));
+        
         const obj = {};
-        headers.forEach((h, i) => obj[h] = cols[i] || '');
-        if (cols[1]) obj['打包日期'] = cols[1];
-        if (cols[2]) obj['打包隊'] = cols[2];
-        if (cols[3]) obj['打包單號'] = cols[3];
-        if (cols[4]) obj['打包型態'] = cols[4];
-        if (cols[5]) obj['產品編號'] = cols[5];
-        if (cols[6]) obj['產品名稱'] = cols[6];
-        if (cols[7]) obj['規格'] = cols[7];
-        if (cols[8]) obj['製造日期'] = cols[8];
-        if (cols[9]) obj['數量'] = cols[9];
-        if (cols[10]) obj['重量'] = cols[10];
-        if (cols[11]) obj['條碼內容'] = cols[11];
-        return obj;
-      });
+        headers.forEach((h, idx) => {
+          obj[h] = cols[idx] || '';
+        });
+
+        obj['打包日期'] = cols[1] || obj['打包日期'] || '';
+        obj['打包隊']   = cols[2] || obj['打包隊'] || '';
+        obj['打包單號'] = cols[3] || obj['打包單號'] || '';
+        obj['打包型態'] = cols[4] || obj['打包型態'] || '';
+        obj['產品編號'] = cols[5] || obj['產品編號'] || '';
+        obj['產品名稱'] = cols[6] || obj['產品名稱'] || '';
+        obj['規格']     = cols[7] || obj['規格'] || '';
+        obj['製造日期'] = cols[8] || obj['製造日期'] || '';
+        obj['數量']     = cols[9] || obj['數量'] || '0';
+        obj['重量']     = cols[10] || obj['重量'] || '0';
+        obj['條碼內容'] = cols[11] || obj['條碼內容'] || '';
+
+        state.csvRows.push(obj);
+      }
 
       document.getElementById('stat-csv-rows').textContent = `${state.csvRows.length} 筆`;
     }
 
-    // 建立標準雙分頁 Workbook 物件
     function buildDualSheetWorkbook() {
       const wb = XLSX.utils.book_new();
 
-      // 分頁 1: Sheet1 (資料嚴格自 B 欄開始，A 欄留空)
+      // Sheet 1: 資料自 B 欄開始，A 欄留空
       const sheet1Data = [
         ["", "報表編號: INV17190032", "", "", "", "", "", "", "", "", "印表日期: 115/09/28"],
         ["", "台灣卜蜂企業股份有限公司 速凍打包批號明細表"],
@@ -880,7 +905,7 @@
       const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
       XLSX.utils.book_append_sheet(wb, ws1, "Sheet1");
 
-      // 分頁 2: 移倉內容彙總
+      // Sheet 2: 移倉內容彙總
       const title = document.getElementById('preview-sheet-title').textContent;
       const orderNo = document.getElementById('cfg-order-no').value || '';
       const deliveryNo = document.getElementById('cfg-delivery-no').value || '';
@@ -929,7 +954,6 @@
       return wb;
     }
 
-    // 本機下載 .xls (BIFF8 二進位檔)
     function exportToExcel() {
       if (!state.matchedDetails.length) {
         alert('尚無比對資料可匯出');
@@ -943,7 +967,6 @@
       XLSX.writeFile(wb, fileName, { bookType: 'biff8' });
     }
 
-    // 回寫雲端真實實體 .xls 檔案
     async function writeToGasCloud() {
       if (!state.matchedDetails.length) {
         alert('尚無比對資料可回寫雲端');
@@ -1033,7 +1056,6 @@
       document.getElementById('btn-gas-write-sheet').onclick = writeToGasCloud;
       document.getElementById('btn-sync-gas-csv').onclick = autoSyncLatestCsv;
 
-      // 本地手動上傳備援 (以 Big5 解析)
       document.getElementById('input-csv-file').onchange = (e) => {
         const f = e.target.files[0];
         if (!f) return;

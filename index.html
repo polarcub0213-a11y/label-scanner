@@ -769,23 +769,27 @@
       document.getElementById('sheet2-total-weight').textContent = totalWeight.toFixed(2);
     }
 
-// 輕量化精準同步：將板號 P 單送至雲端直接篩選，秒速回傳且中文絕不亂碼
+// 自動同步：無 P 單時僅檢查狀態，有 P 單時精準請求，不再逾時
 function autoSyncLatestCsv() {
   const badge = document.getElementById('badge-csv-status');
   const text = document.getElementById('csv-status-text');
   if (badge) badge.classList.remove('hidden');
-  if (text) text.textContent = '雲端比對中...';
 
-  // 取得目前已辨識出的所有板號 P 單（以逗號串接）
   const pList = state.labels.map(l => (l.p_order || '').trim()).filter(Boolean).join(',');
+
+  if (!pList) {
+    if (text) text.textContent = '雲端連線中...';
+  } else {
+    if (text) text.textContent = '比對雲端大庫中...';
+  }
 
   const callbackName = 'gasCallback_' + Date.now();
   const timeoutTimer = setTimeout(() => {
     delete window[callbackName];
     const oldScript = document.getElementById('jsonp-gas-script');
     if (oldScript) oldScript.remove();
-    if (text) text.textContent = '連線逾時 (可手動上傳)';
-  }, 15000);
+    if (text) text.textContent = '雲端連線逾時 (可手動上傳)';
+  }, 20000);
 
   window[callbackName] = function(json) {
     clearTimeout(timeoutTimer);
@@ -793,11 +797,15 @@ function autoSyncLatestCsv() {
     const oldScript = document.getElementById('jsonp-gas-script');
     if (oldScript) oldScript.remove();
 
-    if (json && json.status === 'success') {
+    if (json && (json.status === 'success' || json.status === 'ready')) {
+      if (json.status === 'ready') {
+        if (text) text.textContent = `雲端就緒 (${json.fileName})`;
+        return;
+      }
+
       state.matchedDetails = json.matchedRows || [];
-      if (text) text.textContent = `已對碰 ${json.fileName} (${state.matchedDetails.length}筆符合)`;
+      if (text) text.textContent = `已比對 ${json.fileName} (${state.matchedDetails.length}筆符合)`;
       
-      // 更新介面筆數與表格
       document.getElementById('stat-csv-rows').textContent = `${json.totalRows || state.matchedDetails.length} 筆`;
       document.getElementById('stat-matched-rows').textContent = `${state.matchedDetails.length} 筆`;
       document.getElementById('badge-match-count').textContent = `${state.matchedDetails.length}筆符合`;
@@ -805,7 +813,7 @@ function autoSyncLatestCsv() {
       renderSheet1Table();
       renderSheet2Table();
     } else {
-      if (text) text.textContent = json.message || '未找到相符資料';
+      if (text) text.textContent = json.message || '找不到大庫檔案';
     }
   };
 
@@ -815,8 +823,6 @@ function autoSyncLatestCsv() {
   const script = document.createElement('script');
   script.id = 'jsonp-gas-script';
   const targetDate = state.selectedDate ? state.selectedDate.replace(/-/g, '') : '';
-  
-  // 將 p_orders 一併傳送給雲端
   script.src = `${state.gasUrl}?callback=${callbackName}&date=${targetDate}&p_orders=${encodeURIComponent(pList)}&t=${Date.now()}`;
   document.body.appendChild(script);
 }

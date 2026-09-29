@@ -769,22 +769,24 @@
       document.getElementById('sheet2-total-weight').textContent = totalWeight.toFixed(2);
     }
 
-// 增強型自動同步：接收 Base64 並使用瀏覽器原生 TextDecoder('big5') 解碼，徹底防亂碼
+// 輕量化精準同步：將板號 P 單送至雲端直接篩選，秒速回傳且中文絕不亂碼
 function autoSyncLatestCsv() {
   const badge = document.getElementById('badge-csv-status');
   const text = document.getElementById('csv-status-text');
   if (badge) badge.classList.remove('hidden');
-  if (text) text.textContent = '大庫同步中(解析編碼)...';
+  if (text) text.textContent = '雲端比對中...';
+
+  // 取得目前已辨識出的所有板號 P 單（以逗號串接）
+  const pList = state.labels.map(l => (l.p_order || '').trim()).filter(Boolean).join(',');
 
   const callbackName = 'gasCallback_' + Date.now();
   const timeoutTimer = setTimeout(() => {
     delete window[callbackName];
     const oldScript = document.getElementById('jsonp-gas-script');
     if (oldScript) oldScript.remove();
-    if (text) text.textContent = '雲端連線逾時 (請點此手動上傳)';
-  }, 45000);
+    if (text) text.textContent = '連線逾時 (可手動上傳)';
+  }, 15000);
 
-  // 處理接收到的資料
   window[callbackName] = function(json) {
     clearTimeout(timeoutTimer);
     delete window[callbackName];
@@ -792,37 +794,19 @@ function autoSyncLatestCsv() {
     if (oldScript) oldScript.remove();
 
     if (json && json.status === 'success') {
-      let decodedContent = "";
-
-      // 優先使用二進位 Base64 進行瀏覽器 Big5 解碼
-      if (json.csvBase64) {
-        try {
-          const binaryStr = window.atob(json.csvBase64);
-          const len = binaryStr.length;
-          const bytes = new Uint8Array(len);
-          for (let i = 0; i < len; i++) {
-            bytes[i] = binaryStr.charCodeAt(i);
-          }
-          // 瀏覽器原生的 Big5 解碼器（完整支援 CP950 擴充字集）
-          const decoder = new TextDecoder('big5');
-          decodedContent = decoder.decode(bytes);
-        } catch (decodeErr) {
-          console.warn("Base64 解碼失敗，使用純文字:", decodeErr);
-          decodedContent = json.csvContent || "";
-        }
-      } else {
-        decodedContent = json.csvContent || "";
-      }
-
-      if (decodedContent) {
-        parseCsvContent(decodedContent);
-        if (text) text.textContent = `已讀取 ${json.fileName || '大庫'} (${state.csvRows.length}筆)`;
-        matchWithCsv();
-        return;
-      }
+      state.matchedDetails = json.matchedRows || [];
+      if (text) text.textContent = `已對碰 ${json.fileName} (${state.matchedDetails.length}筆符合)`;
+      
+      // 更新介面筆數與表格
+      document.getElementById('stat-csv-rows').textContent = `${json.totalRows || state.matchedDetails.length} 筆`;
+      document.getElementById('stat-matched-rows').textContent = `${state.matchedDetails.length} 筆`;
+      document.getElementById('badge-match-count').textContent = `${state.matchedDetails.length}筆符合`;
+      
+      renderSheet1Table();
+      renderSheet2Table();
+    } else {
+      if (text) text.textContent = json.message || '未找到相符資料';
     }
-    
-    if (text) text.textContent = '未找到大庫 CSV (請點此手動上傳)';
   };
 
   const oldScript = document.getElementById('jsonp-gas-script');
@@ -831,7 +815,9 @@ function autoSyncLatestCsv() {
   const script = document.createElement('script');
   script.id = 'jsonp-gas-script';
   const targetDate = state.selectedDate ? state.selectedDate.replace(/-/g, '') : '';
-  script.src = `${state.gasUrl}?callback=${callbackName}&date=${targetDate}&t=${Date.now()}`;
+  
+  // 將 p_orders 一併傳送給雲端
+  script.src = `${state.gasUrl}?callback=${callbackName}&date=${targetDate}&p_orders=${encodeURIComponent(pList)}&t=${Date.now()}`;
   document.body.appendChild(script);
 }
 

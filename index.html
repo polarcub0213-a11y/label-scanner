@@ -722,91 +722,129 @@
       renderSheet2Table();
     };
 
-    // ★ 關鍵：補回 Sheet 1 表格渲染函式
-    function renderSheet1Table() {
-      const tbody = document.getElementById('sheet1-table-body');
-      if (!tbody) return;
-      tbody.innerHTML = '';
-      if (!state.matchedDetails.length) {
-        tbody.innerHTML = '<tr><td colspan="12" class="p-8 text-center text-slate-400">尚未比對出明細資料，請點擊上方「開始比對並回傳」</td></tr>';
-        return;
-      }
+    // 動態動態綁定：直接抓取照片上辨識出的 G 欄產品名稱，徹底解決亂碼且無需字典
+function renderSheet1Table() {
+  const tbody = document.getElementById('sheet1-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (!state.matchedDetails.length) {
+    tbody.innerHTML = '<tr><td colspan="12" class="p-8 text-center text-slate-400">尚未比對出明細資料，請點擊上方「開始比對並回傳」</td></tr>';
+    return;
+  }
 
-      state.matchedDetails.forEach((r, idx) => {
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-50";
-        tr.innerHTML = `
-          <td class="p-2 text-center text-slate-400">${idx + 1}</td>
-          <td class="p-2">${r['打包日期'] || ''}</td>
-          <td class="p-2">${r['打包隊'] || ''}</td>
-          <td class="p-2 text-blue-700 font-bold">${r['打包單號'] || ''}</td>
-          <td class="p-2 font-medium text-slate-700">${r['打包型態'] || ''}</td>
-          <td class="p-2 text-emerald-700 font-bold">${r['產品編號'] || ''}</td>
-          <td class="p-2 text-slate-900 font-bold">${r['產品名稱'] || ''}</td>
-          <td class="p-2 text-center">${r['規格'] || ''}</td>
-          <td class="p-2">${r['製造日期'] || ''}</td>
-          <td class="p-2 text-right">${r['數量'] || '0'}</td>
-          <td class="p-2 text-right">${parseFloat(r['重量'] || 0).toFixed(2)}</td>
-          <td class="p-2">${r['條碼內容'] || ''}</td>
-        `;
-        tbody.appendChild(tr);
-      });
+  // 從分頁 1 當下辨識的 12 張標籤建立即時品名對照
+  const currentPhotoNameMap = {};
+  state.labels.forEach(l => {
+    const code = (l.product_code || '').trim();
+    const name = (l.product_name || '').trim();
+    if (code && name) {
+      currentPhotoNameMap[code] = name;
     }
+  });
+
+  state.matchedDetails.forEach((r, idx) => {
+    const pCode = (r['產品編號'] || '').trim();
+    let pName = (r['產品名稱'] || '').trim();
+
+    // 1. 若大庫回傳的品名出現「孳刻」或菱形問號亂碼，直接取照片辨識的真實繁體品名
+    if (pName.includes('孳刻') || pName.includes('\uFFFD') || pName.includes('') || !pName) {
+      if (currentPhotoNameMap[pCode]) {
+        pName = currentPhotoNameMap[pCode];
+      }
+    }
+
+    const tr = document.createElement('tr');
+    tr.className = "hover:bg-slate-50";
+    tr.innerHTML = `
+      <td class="p-2 text-center text-slate-400">${idx + 1}</td>
+      <td class="p-2">${r['打包日期'] || ''}</td>
+      <td class="p-2">${r['打包隊'] || ''}</td>
+      <td class="p-2 text-blue-700 font-bold">${r['打包單號'] || ''}</td>
+      <td class="p-2 font-medium text-slate-700">6- 移入大庫</td>
+      <td class="p-2 text-emerald-700 font-bold">${pCode}</td>
+      <td class="p-2 text-slate-900 font-bold">${pName}</td>
+      <td class="p-2 text-center">${r['規格'] || ''}</td>
+      <td class="p-2">${r['製造日期'] || ''}</td>
+      <td class="p-2 text-right">${r['數量'] || '0'}</td>
+      <td class="p-2 text-right">${parseFloat(r['重量'] || 0).toFixed(2)}</td>
+      <td class="p-2">${r['條碼內容'] || ''}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
 
     // ★ 關鍵：補回 Sheet 2 彙總表格渲染函式
     function renderSheet2Table() {
-      const tbody = document.getElementById('sheet2-table-body');
-      if (!tbody) return;
-      tbody.innerHTML = '';
-      if (!state.matchedDetails.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-400">尚未比對出彙總資料</td></tr>';
-        return;
-      }
+  const tbody = document.getElementById('sheet2-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (!state.matchedDetails.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-400">尚未比對出彙總資料</td></tr>';
+    return;
+  }
 
-      const groups = {};
-      let totalQty = 0;
-      let totalWeight = 0;
-
-      state.matchedDetails.forEach(r => {
-        const pCode = r['產品編號'] || '';
-        const pName = r['產品名稱'] || '';
-        const spec = r['規格'] || '';
-        const pOrder = r['打包單號'] || '';
-        const mDate = r['製造日期'] || '';
-        const qty = parseInt(r['數量'] || 0, 10);
-        const weight = parseFloat(r['重量'] || 0);
-
-        totalQty += qty;
-        totalWeight += weight;
-
-        const key = `${pCode}__${pName}__${spec}__${pOrder}__${mDate}`;
-        if (!groups[key]) {
-          groups[key] = { pCode, pName, spec, pOrder, mDate, qty: 0, weight: 0 };
-        }
-        groups[key].qty += qty;
-        groups[key].weight += weight;
-      });
-
-      Object.values(groups).forEach(g => {
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-50";
-        tr.innerHTML = `
-          <td class="p-2.5 font-bold font-mono text-emerald-700">${g.pCode}</td>
-          <td class="p-2.5 font-bold text-slate-800">${g.pName}</td>
-          <td class="p-2.5 text-center">${g.spec}</td>
-          <td class="p-2.5 font-mono text-blue-700 font-bold">${g.pOrder}</td>
-          <td class="p-2.5 font-mono">${g.mDate}</td>
-          <td class="p-2.5 text-right font-mono font-bold">${g.qty}</td>
-          <td class="p-2.5 text-right font-mono font-bold">${g.weight.toFixed(2)}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-
-      const totalQtyElem = document.getElementById('sheet2-total-qty');
-      const totalWeightElem = document.getElementById('sheet2-total-weight');
-      if (totalQtyElem) totalQtyElem.textContent = totalQty;
-      if (totalWeightElem) totalWeightElem.textContent = totalWeight.toFixed(2);
+  // 從分頁 1 抓取即時品名對照
+  const currentPhotoNameMap = {};
+  state.labels.forEach(l => {
+    const code = (l.product_code || '').trim();
+    const name = (l.product_name || '').trim();
+    if (code && name) {
+      currentPhotoNameMap[code] = name;
     }
+  });
+
+  const groups = {};
+  let totalQty = 0;
+  let totalWeight = 0;
+
+  state.matchedDetails.forEach(r => {
+    const pCode = (r['產品編號'] || '').trim();
+    let pName = (r['產品名稱'] || '').trim();
+
+    // 替換亂碼為照片真實品名
+    if (pName.includes('孳刻') || pName.includes('\uFFFD') || pName.includes('') || !pName) {
+      if (currentPhotoNameMap[pCode]) {
+        pName = currentPhotoNameMap[pCode];
+      }
+    }
+
+    const spec = r['規格'] || '';
+    const pOrder = r['打包單號'] || '';
+    const mDate = r['製造日期'] || '';
+    const qty = parseInt(r['數量'] || 0, 10);
+    const weight = parseFloat(r['重量'] || 0);
+
+    totalQty += qty;
+    totalWeight += weight;
+
+    const key = `${pCode}__${pName}__${spec}__${pOrder}__${mDate}`;
+    if (!groups[key]) {
+      groups[key] = { pCode, pName, spec, pOrder, mDate, qty: 0, weight: 0 };
+    }
+    groups[key].qty += qty;
+    groups[key].weight += weight;
+  });
+
+  Object.values(groups).forEach(g => {
+    const tr = document.createElement('tr');
+    tr.className = "hover:bg-slate-50";
+    tr.innerHTML = `
+      <td class="p-2.5 font-bold font-mono text-emerald-700">${g.pCode}</td>
+      <td class="p-2.5 font-bold text-slate-800">${g.pName}</td>
+      <td class="p-2.5 text-center">${g.spec}</td>
+      <td class="p-2.5 font-mono text-blue-700 font-bold">${g.pOrder}</td>
+      <td class="p-2.5 font-mono">${g.mDate}</td>
+      <td class="p-2.5 text-right font-mono font-bold">${g.qty}</td>
+      <td class="p-2.5 text-right font-mono font-bold">${g.weight.toFixed(2)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const totalQtyElem = document.getElementById('sheet2-total-qty');
+  const totalWeightElem = document.getElementById('sheet2-total-weight');
+  if (totalQtyElem) totalQtyElem.textContent = totalQty;
+  if (totalWeightElem) totalWeightElem.textContent = totalWeight.toFixed(2);
+}
 
     // ★ 關鍵：前端 Big5 解碼接收器
     function syncCloudCsv(isManual = false) {

@@ -69,7 +69,7 @@
             <i class="fa-brands fa-google-drive mr-1.5"></i>雲端資料夾
           </a>
           <button id="btn-open-api-modal" class="px-3 py-1.5 text-xs font-semibold rounded-lg border transition flex items-center bg-slate-100 text-slate-700 border-slate-300">
-            <i class="fa-solid fa-key mr-1.5"></i>API 設定
+            <i class="fa-solid fa-key mr-1.5"></i>API 已配置
           </button>
         </div>
       </div>
@@ -277,12 +277,11 @@
               <i class="fa-solid fa-database text-indigo-600"></i> 移入大庫 CSV 比對與提貨表生成
             </h3>
             <p class="text-xs text-slate-500 mt-0.5">
-              以相片 12 個板號 P 單對應大庫檔案第 <b>D 欄「打包單號」</b>，自動關聯產品編號、品名、製造日期、數量與重量
+              以相片 12 個板號 P 單對應大庫檔案第 <b>D 欄「打包單號」</b>，自動取得打包日期、產品編號、品名、製造日期、數量與重量
             </p>
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
-            <!-- 手動啟動對碰按鈕 -->
             <button id="btn-manual-trigger-match" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md transition">
               <i class="fa-solid fa-play"></i> 開始比對並回傳
             </button>
@@ -437,20 +436,22 @@
         </h3>
         <button id="btn-close-api-modal" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
-      <p class="text-xs text-slate-600">請貼上您的 Google Gemini API Key 以啟用即時視覺解析：</p>
-      <input type="password" id="input-api-key" placeholder="AIzaSy..." class="border rounded-lg p-2 text-xs font-mono">
+      <p class="text-xs text-slate-600">當前金鑰（已預設配置）：</p>
+      <input type="password" id="input-api-key" class="border rounded-lg p-2 text-xs font-mono">
       <div class="flex items-center justify-between pt-2">
-        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-xs text-emerald-600 underline">免費取得 API Key</a>
-        <button id="btn-save-api-key" class="px-4 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg">儲存 Key</button>
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-xs text-emerald-600 underline">前往 Google AI Studio</a>
+        <button id="btn-save-api-key" class="px-4 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg">更新儲存</button>
       </div>
     </div>
   </div>
 
-  <!-- JavaScript 核心邏輯 -->
+  <!-- JavaScript 核心程式碼 -->
   <script>
+    // 預設部署網址與預設內建金鑰
     const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbzNFID1CjhHMrzs7vhFqX4zWdkD5u8W0DnmO_VEtZsK7AT1Pke8vVlPjRs2P-dLUJKRCA/exec";
+    const HARDCODED_API_KEY = "";
     
-    // 與相片 45949.jpg 完全對應的 12 板實體標籤
+    // 實體標籤 12 板備援與範例資料
     const FALLBACK_LABELS_SAMPLE = [
       { product_code: "5105000012", product_name: "雞排XL", p_order: "P681591020", seq: "10", boxes: "42箱", date: "115/09/24" },
       { product_code: "5105000032", product_name: "雞排TS3", p_order: "P681591022", seq: "9", boxes: "42箱", date: "115/09/24" },
@@ -467,7 +468,7 @@
     ];
 
     let state = {
-      apiKey: localStorage.getItem('gemini_api_key') || '',
+      apiKey: localStorage.getItem('gemini_api_key') || HARDCODED_API_KEY,
       gasUrl: localStorage.getItem('gas_web_app_url') || DEFAULT_GAS_URL,
       selectedDate: '',
       currentImageBase64: null,
@@ -562,6 +563,103 @@
       reader.readAsDataURL(file);
     }
 
+    // ★ 核心：支援 AQ. 新版金鑰之 Gemini 視覺辨識函式
+    async function runGeminiVisionOcr() {
+      if (!state.currentImageBase64) {
+        alert('請先拍攝或上傳標籤照片！');
+        return;
+      }
+
+      const key = (state.apiKey || HARDCODED_API_KEY).trim();
+      if (!key) {
+        alert('未配置 API Key！');
+        return;
+      }
+
+      btnStartOcr.disabled = true;
+      btnStartOcr.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> AI 視覺解析中...';
+
+      const promptText = `請仔細分析這張移倉標籤相片，辨識圖中所有標籤內容。每張標籤通常包含：
+1. 產品名稱 (如: 雞排XL、去皮清肉、翅小腿、BP肉醬、里肌肉丁等)
+2. 產品編號 (10碼數字，如 5105000012)
+3. 板號P單 (條碼下方以P開頭的10碼編號，如 P681591020)
+4. 序號 (如 10)
+5. 箱數 (如 42箱)
+6. 日期資訊 (如 115/09/24)
+
+請嚴格以純 JSON 陣列格式輸出，不要加任何 markdown 標記：
+[
+  {
+    "product_code": "5105000012",
+    "product_name": "雞排XL",
+    "p_order": "P681591020",
+    "seq": "10",
+    "boxes": "42箱",
+    "date": "115/09/24"
+  }
+]`;
+
+      const base64Data = state.currentImageBase64.split(',')[1];
+      let parsed = null;
+      let lastErrMsg = '';
+
+      const modelList = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash'];
+
+      for (const m of modelList) {
+        try {
+          // 金鑰走 HTTP Header 安全傳遞，支援 AQ. 格式
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
+          const resp = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': key
+            },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { text: promptText },
+                  { inline_data: { mime_type: "image/jpeg", data: base64Data } }
+                ]
+              }],
+              generationConfig: {
+                temperature: 0.1,
+                responseMimeType: "application/json"
+              }
+            })
+          });
+
+          if (!resp.ok) {
+            const errJson = await resp.json().catch(() => ({}));
+            lastErrMsg = errJson.error?.message || `HTTP ${resp.status}`;
+            continue;
+          }
+
+          const resData = await resp.json();
+          const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (rawText) {
+            const clean = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+            parsed = JSON.parse(clean);
+            if (Array.isArray(parsed) && parsed.length > 0) break;
+          }
+        } catch (e) {
+          lastErrMsg = e.message;
+        }
+      }
+
+      btnStartOcr.disabled = false;
+      btnStartOcr.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> 開始 AI 標籤辨識';
+
+      if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+        state.labels = parsed;
+        renderLabelsTable();
+        doLocalMatching(); // 自動執行大庫對碰
+        alert(`🎉 AI 辨識成功！辨識出 ${state.labels.length} 張標籤，已自動更新！`);
+      } else {
+        alert(`AI 辨識提示：${lastErrMsg || '未能成功解析'}\n已為您保留既有 12 板清單。`);
+      }
+    }
+
     function renderLabelsTable() {
       const tbody = document.getElementById('labels-table-body');
       tbody.innerHTML = '';
@@ -603,7 +701,7 @@
       doLocalMatching();
     };
 
-    // ★ 關鍵：前端快速對碰 (3 萬多筆資料僅需 0.05 秒)
+    // 前端對碰運算 (0.05 秒完成)
     function doLocalMatching() {
       if (!state.labels.length || !state.csvRows.length) return;
 
@@ -615,7 +713,7 @@
 
       const pSet = new Set(pOrders);
 
-      // 比對打包單號 (第 D 欄 / 索引 3)
+      // 比對 D 欄打包單號
       state.matchedDetails = state.csvRows.filter(row => {
         const dVal = (row['打包單號'] || row['欄位D'] || row[3] || '').toString().trim().toUpperCase();
         if (pSet.has(dVal)) return true;
@@ -636,7 +734,7 @@
       renderSheet2Table();
     }
 
-    // ★ 雲端極速串流同步：GAS 傳送 Base64，前端 TextDecoder('big5') 解析，不再逾時
+    // 串流同步大庫 CSV 並以 Big5 解析
     function syncCloudCsv(isManual = false) {
       const text = document.getElementById('csv-status-text');
       const badge = document.getElementById('badge-csv-status');
@@ -654,7 +752,7 @@
         delete window[callbackName];
         const oldScript = document.getElementById('jsonp-gas-script');
         if (oldScript) oldScript.remove();
-        if (text) text.textContent = '連線逾時 (請檢查雲端硬碟)';
+        if (text) text.textContent = '連線逾時 (請檢查雲端資料夾)';
         if (btn && isManual) {
           btn.innerHTML = '<i class="fa-solid fa-play"></i> 開始比對並回傳';
           btn.disabled = false;
@@ -674,14 +772,12 @@
 
         if (json && json.status === 'success' && json.csvBase64) {
           try {
-            // 瀏覽器解碼 Base64
             const binaryStr = window.atob(json.csvBase64);
             const len = binaryStr.length;
             const bytes = new Uint8Array(len);
             for (let i = 0; i < len; i++) {
               bytes[i] = binaryStr.charCodeAt(i);
             }
-            // 原生 Big5 解碼 (中文 100% 正常)
             const decoder = new TextDecoder('big5');
             const csvText = decoder.decode(bytes);
 
@@ -978,19 +1074,19 @@
     }
 
     window.onload = () => {
-      initDate(); // 自動帶入今天
-      renderLabelsTable(); // 預設顯示畫面中的 12 板
-      syncCloudCsv(false); // 頁面載入時自動在背景秒速同步大庫
+      initDate(); // 帶入今天
+      renderLabelsTable(); // 渲染 12 板
+      syncCloudCsv(false); // 背景預載大庫
 
       document.getElementById('tab-btn-labels').onclick = () => switchTab('labels');
       document.getElementById('tab-btn-sheet1').onclick = () => switchTab('sheet1');
       document.getElementById('tab-btn-sheet2').onclick = () => switchTab('sheet2');
 
-      // 手動觸發比對按鈕
+      // 手動觸發比對
       document.getElementById('btn-manual-trigger-match').onclick = () => syncCloudCsv(true);
       document.getElementById('btn-sync-gas-csv').onclick = () => syncCloudCsv(true);
 
-      // 本地上傳 CSV 支援
+      // 本地上傳 CSV
       document.getElementById('input-csv-file').onchange = (e) => {
         const f = e.target.files[0];
         if (!f) return;
@@ -1008,7 +1104,7 @@
       cameraInput.onchange = (e) => handleFile(e.target.files[0]);
       document.getElementById('btn-browse').onclick = () => fileInput.click();
       document.getElementById('btn-camera').onclick = () => cameraInput.click();
-      btnStartOcr.onclick = () => syncCloudCsv(true);
+      btnStartOcr.onclick = runGeminiVisionOcr; // 執行 AI 辨識
 
       document.getElementById('btn-export-excel').onclick = exportToExcel;
       document.getElementById('btn-gas-write-sheet').onclick = writeToGasCloud;
@@ -1018,7 +1114,9 @@
       });
 
       const apiModal = document.getElementById('modal-api');
+      document.getElementById('input-api-key').value = state.apiKey;
       document.getElementById('btn-open-api-modal').onclick = () => apiModal.classList.remove('hidden');
+      document.getElementById('btn-open-api-modal-m').onclick = () => apiModal.classList.remove('hidden');
       document.getElementById('btn-close-api-modal').onclick = () => apiModal.classList.add('hidden');
       document.getElementById('btn-save-api-key').onclick = () => {
         const key = document.getElementById('input-api-key').value.trim();

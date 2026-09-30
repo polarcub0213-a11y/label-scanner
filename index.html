@@ -774,7 +774,7 @@
       return r;
     }
 
-    // 輕量化比對索取：直接讀取 F 欄編號與 G 欄品名，無需任何對照字典
+// 雲端串流精準接收：在前端以原生 Big5 解碼原始 Bytes，不需要任何品名對照表！
 function syncCloudCsv(isManual = false) {
   const text = document.getElementById('csv-status-text');
   const badge = document.getElementById('badge-csv-status');
@@ -816,29 +816,64 @@ function syncCloudCsv(isManual = false) {
       btn.disabled = false;
     }
 
-    if (json && json.status === 'success') {
-      // 直接接收後端從大庫 G 欄抓出的原始產品名稱，打包型態預設 6- 移入大庫
-      state.matchedDetails = (json.matchedRows || []).map(r => {
-        r['打包型態'] = '6- 移入大庫';
-        return r;
-      });
+    if (json && json.status === 'success' && json.matchedCsvBase64) {
+      try {
+        // 1. 將後端過濾後的原始 Bytes 從 Base64 解碼
+        const binaryStr = window.atob(json.matchedCsvBase64);
+        const len = binaryStr.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
 
-      if (text) text.textContent = `已回傳 ${json.fileName} (${state.matchedDetails.length}筆符合)`;
+        // 2. ★ 瀏覽器原生 Big5/CP950 解碼：完整支援 Windows 繁體中文，字字清晰！
+        const decoder = new TextDecoder('big5');
+        const csvText = decoder.decode(bytes);
 
-      const badgeCount = document.getElementById('badge-match-count');
-      const statMatched = document.getElementById('stat-matched-rows');
-      const statCsv = document.getElementById('stat-csv-rows');
+        // 3. 解析行與欄位
+        const lines = csvText.split(/\r?\n/).filter(line => line.trim());
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, ''));
 
-      if (badgeCount) badgeCount.textContent = `${state.matchedDetails.length}筆符合`;
-      if (statMatched) statMatched.textContent = `${state.matchedDetails.length} 筆`;
-      if (statCsv) statCsv.textContent = `${json.totalRows || 39412} 筆`;
+        state.matchedDetails = [];
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^["']\vert{}["']$/g, ''));
 
-      renderSheet1Table();
-      renderSheet2Table();
+          state.matchedDetails.push({
+            '打包日期': cols[1] || '',
+            '打包隊': cols[2] || '',
+            '打包單號': cols[3] || '',
+            '打包型態': '6- 移入大庫', // 依需求固定為 6- 移入大庫
+            '產品編號': cols[5] || '', // F 欄
+            '產品名稱': cols[6] || '', // G 欄 (直接使用大庫原始文字，如：骨腿切丁)
+            '規格': cols[7] || '',
+            '製造日期': cols[8] || '',
+            '數量': cols[9] || '0',
+            '重量': cols[10] || '0',
+            '條碼內容': cols[11] || ''
+          });
+        }
 
-      if (isManual) {
-        switchTab('sheet1');
-        alert(`✅ 比對成功！已成功關聯出 ${state.matchedDetails.length} 筆明細！`);
+        if (text) text.textContent = `已回傳 ${json.fileName} (${state.matchedDetails.length}筆符合)`;
+
+        const badgeCount = document.getElementById('badge-match-count');
+        const statMatched = document.getElementById('stat-matched-rows');
+        const statCsv = document.getElementById('stat-csv-rows');
+
+        if (badgeCount) badgeCount.textContent = `${state.matchedDetails.length}筆符合`;
+        if (statMatched) statMatched.textContent = `${state.matchedDetails.length} 筆`;
+        if (statCsv) statCsv.textContent = `${json.totalRows || 39412} 筆`;
+
+        renderSheet1Table();
+        renderSheet2Table();
+
+        if (isManual) {
+          switchTab('sheet1');
+          alert(`✅ 比對成功！已成功關聯出 ${state.matchedDetails.length} 筆明細！`);
+        }
+      } catch (err) {
+        if (text) text.textContent = '解碼失敗：' + err.message;
       }
     } else if (json && json.status === 'ready') {
       if (text) text.textContent = `雲端就緒 (${json.fileName})`;

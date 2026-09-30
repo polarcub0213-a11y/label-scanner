@@ -602,105 +602,108 @@
       reader.readAsDataURL(file);
     }
 
-    async function runGeminiVisionOcr() {
-      if (!state.currentImageBase64) {
-        alert('請先拍攝或上傳標籤照片！');
-        return;
-      }
+    // 真實 AI 視覺解析核心 (去除假備援，直接呈現相片真實辨識結果)
+async function runGeminiVisionOcr() {
+  if (!state.currentImageBase64) {
+    alert('請先拍攝或選取標籤照片！');
+    return;
+  }
 
-      const key = (state.apiKey || HARDCODED_API_KEY).trim();
-      if (!key) {
-        alert('未配置 API Key！');
-        return;
-      }
+  const key = (state.apiKey || HARDCODED_API_KEY).trim();
+  if (!key) {
+    alert('請先點擊右上角「API 設定」配置您的 API Key！');
+    return;
+  }
 
-      btnStartOcr.disabled = true;
-      btnStartOcr.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> AI 視覺解析中...';
+  btnStartOcr.disabled = true;
+  btnStartOcr.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> AI 辨識分析相片中...';
 
-      const promptText = `請仔細分析這張移倉標籤相片，辨識圖中所有標籤內容。每張標籤通常包含：
-1. 產品名稱 (如: 雞排XL、去皮清肉、翅小腿、BP肉醬、里肌肉丁等)
-2. 產品編號 (10碼數字，如 5105000012)
-3. 板號P單 (條碼下方以P開頭的10碼編號，如 P681591020)
-4. 序號 (如 10)
+  const promptText = `你是一個專業倉儲視覺辨識系統。請仔細辨識這張相片中的所有標籤（通常為 12 張或更多）。
+每張標籤請精準提取以下資訊：
+1. 產品名稱 (位於標籤上方，如：40-50去皮清肉、里肌肉丁 8~10g、A級翅小腿-凍、去皮帶骨胸丁(7-11)、8-10胸肉丁、去皮腿肉塊 等)
+2. 產品編號 (條碼上方的10碼數字，如 5109000132, 5119000052, 5123000484 等)
+3. 板號P單 (條碼正下方的10碼編號，以 P 開頭，如 P681591060, P681591039, P681591049 等)
+4. 序號 (標籤右上方數字，如 28, 7, 17, 3, 10 等)
 5. 箱數 (如 42箱)
-6. 日期資訊 (如 115/09/24)
+6. 日期資訊 (如 115/09/15, 115/09/10 等)
 
-請嚴格以純 JSON 陣列格式輸出，不要加任何 markdown 標記：
+請嚴格輸出純 JSON 陣列格式，絕不要包含任何 Markdown 標籤或說明文字：
 [
   {
-    "product_code": "5105000012",
-    "product_name": "雞排XL",
-    "p_order": "P681591020",
-    "seq": "10",
+    "product_code": "5109000132",
+    "product_name": "40-50去皮清肉",
+    "p_order": "P681591060",
+    "seq": "28",
     "boxes": "42箱",
-    "date": "115/09/24"
+    "date": "115/09/15"
   }
 ]`;
 
-      const base64Data = state.currentImageBase64.split(',')[1];
-      let parsed = null;
-      let lastErrMsg = '';
+  const base64Data = state.currentImageBase64.split(',')[1];
+  let parsed = null;
+  let lastErrMsg = '';
 
-      const modelList = ['gemini-2.5-flash', 'gemini-flash-latest'];
+  // 官方標準模型清單
+  const models = ['gemini-2.5-flash', 'gemini-flash-latest'];
 
-      for (const m of modelList) {
-        try {
-          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
-          const resp = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-goog-api-key': key
-            },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { text: promptText },
-                  { inline_data: { mime_type: "image/jpeg", data: base64Data } }
-                ]
-              }],
-              generationConfig: {
-                temperature: 0.1,
-                responseMimeType: "application/json"
-              }
-            })
-          });
-
-          if (!resp.ok) {
-            const errJson = await resp.json().catch(() => ({}));
-            lastErrMsg = errJson.error?.message || `HTTP ${resp.status}`;
-            continue;
+  for (const m of models) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': key
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: promptText },
+              { inline_data: { mime_type: "image/jpeg", data: base64Data } }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            responseMimeType: "application/json"
           }
+        })
+      });
 
-          const resData = await resp.json();
-          const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (rawText) {
-            const clean = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-            parsed = JSON.parse(clean);
-            if (Array.isArray(parsed) && parsed.length > 0) break;
-          }
-        } catch (e) {
-          lastErrMsg = e.message;
+      if (!resp.ok) {
+        const errJson = await resp.json().catch(() => ({}));
+        lastErrMsg = `${m}: ${errJson.error?.message || resp.statusText || resp.status}`;
+        continue;
+      }
+
+      const data = await resp.json();
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (rawText) {
+        const clean = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+        parsed = JSON.parse(clean);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          break;
         }
       }
-
-      btnStartOcr.disabled = false;
-      btnStartOcr.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> 開始 AI 標籤辨識';
-
-      if (parsed && Array.isArray(parsed) && parsed.length > 0) {
-        state.labels = parsed;
-        renderLabelsTable();
-        syncCloudCsv(true); // 自動觸發大庫比對
-        alert(`🎉 AI 辨識成功！辨識出 ${state.labels.length} 張標籤，已自動更新！`);
-      } else {
-        // 若遇到伺服器繁忙，直接載入畫面中這張照片的標準 12 板資料，絕不卡死
-        state.labels = JSON.parse(JSON.stringify(FALLBACK_LABELS_SAMPLE));
-        renderLabelsTable();
-        syncCloudCsv(true);
-        alert(`AI 辨識完成！已同步更新 12 板標籤並自動執行大庫比對。`);
-      }
+    } catch (err) {
+      lastErrMsg = `${m}: ${err.message}`;
     }
+  }
 
+  btnStartOcr.disabled = false;
+  btnStartOcr.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> 開始 AI 標籤辨識';
+
+  if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+    // 成功抓取照片真實辨識結果
+    state.labels = parsed;
+    renderLabelsTable();
+    // 自動帶入辨識出的真實 P 單向大庫對碰
+    syncCloudCsv(true);
+    alert(`🎉 辨識成功！已從目前相片精準辨識出 ${state.labels.length} 張標籤，並自動同步大庫明細！`);
+  } else {
+    // 真實失敗時彈出具體報錯，絕不自動套用舊範例掩蓋
+    alert(`AI 辨識未成功，錯誤原因：\n${lastErrMsg || '未能解析內容'}\n\n請檢查 API Key 是否正確或重試。`);
+  }
+}
     function renderLabelsTable() {
       const tbody = document.getElementById('labels-table-body');
       tbody.innerHTML = '';

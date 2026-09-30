@@ -563,23 +563,23 @@
       reader.readAsDataURL(file);
     }
 
-    // ★ 核心：支援 AQ. 新版金鑰之 Gemini 視覺辨識函式
-    async function runGeminiVisionOcr() {
-      if (!state.currentImageBase64) {
-        alert('請先拍攝或上傳標籤照片！');
-        return;
-      }
+    // 使用 Google 官方推薦的 gemini-2.5-flash 最新模型
+async function runGeminiVisionOcr() {
+  if (!state.currentImageBase64) {
+    alert('請先拍攝或上傳標籤照片！');
+    return;
+  }
 
-      const key = (state.apiKey || HARDCODED_API_KEY).trim();
-      if (!key) {
-        alert('未配置 API Key！');
-        return;
-      }
+  const key = (state.apiKey || HARDCODED_API_KEY).trim();
+  if (!key) {
+    alert('未配置 API Key！');
+    return;
+  }
 
-      btnStartOcr.disabled = true;
-      btnStartOcr.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> AI 視覺解析中...';
+  btnStartOcr.disabled = true;
+  btnStartOcr.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> AI 視覺解析中...';
 
-      const promptText = `請仔細分析這張移倉標籤相片，辨識圖中所有標籤內容。每張標籤通常包含：
+  const promptText = `請仔細分析這張移倉標籤相片，辨識圖中所有標籤內容。每張標籤通常包含：
 1. 產品名稱 (如: 雞排XL、去皮清肉、翅小腿、BP肉醬、里肌肉丁等)
 2. 產品編號 (10碼數字，如 5105000012)
 3. 板號P單 (條碼下方以P開頭的10碼編號，如 P681591020)
@@ -599,66 +599,66 @@
   }
 ]`;
 
-      const base64Data = state.currentImageBase64.split(',')[1];
-      let parsed = null;
-      let lastErrMsg = '';
+  const base64Data = state.currentImageBase64.split(',')[1];
+  let parsed = null;
+  let lastErrMsg = '';
 
-      const modelList = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash'];
+  // 依照官方建議：優先調用 gemini-2.5-flash，次選 gemini-1.5-flash
+  const modelList = ['gemini-2.5-flash', 'gemini-1.5-flash'];
 
-      for (const m of modelList) {
-        try {
-          // 金鑰走 HTTP Header 安全傳遞，支援 AQ. 格式
-          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
-          const resp = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-goog-api-key': key
-            },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { text: promptText },
-                  { inline_data: { mime_type: "image/jpeg", data: base64Data } }
-                ]
-              }],
-              generationConfig: {
-                temperature: 0.1,
-                responseMimeType: "application/json"
-              }
-            })
-          });
-
-          if (!resp.ok) {
-            const errJson = await resp.json().catch(() => ({}));
-            lastErrMsg = errJson.error?.message || `HTTP ${resp.status}`;
-            continue;
+  for (const m of modelList) {
+    try {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
+      const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': key
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: promptText },
+              { inline_data: { mime_type: "image/jpeg", data: base64Data } }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            responseMimeType: "application/json"
           }
+        })
+      });
 
-          const resData = await resp.json();
-          const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (rawText) {
-            const clean = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-            parsed = JSON.parse(clean);
-            if (Array.isArray(parsed) && parsed.length > 0) break;
-          }
-        } catch (e) {
-          lastErrMsg = e.message;
-        }
+      if (!resp.ok) {
+        const errJson = await resp.json().catch(() => ({}));
+        lastErrMsg = errJson.error?.message || `HTTP ${resp.status}`;
+        continue;
       }
 
-      btnStartOcr.disabled = false;
-      btnStartOcr.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> 開始 AI 標籤辨識';
-
-      if (parsed && Array.isArray(parsed) && parsed.length > 0) {
-        state.labels = parsed;
-        renderLabelsTable();
-        doLocalMatching(); // 自動執行大庫對碰
-        alert(`🎉 AI 辨識成功！辨識出 ${state.labels.length} 張標籤，已自動更新！`);
-      } else {
-        alert(`AI 辨識提示：${lastErrMsg || '未能成功解析'}\n已為您保留既有 12 板清單。`);
+      const resData = await resp.json();
+      const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (rawText) {
+        const clean = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+        parsed = JSON.parse(clean);
+        if (Array.isArray(parsed) && parsed.length > 0) break;
       }
+    } catch (e) {
+      lastErrMsg = e.message;
     }
+  }
+
+  btnStartOcr.disabled = false;
+  btnStartOcr.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> 開始 AI 標籤辨識';
+
+  if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+    state.labels = parsed;
+    renderLabelsTable();
+    doLocalMatching(); // 自動執行大庫對碰
+    alert(`🎉 AI 辨識成功！辨識出 ${state.labels.length} 張標籤，已自動更新！`);
+  } else {
+    alert(`AI 辨識提示：${lastErrMsg || '未能成功解析'}\n已為您保留既有 12 板清單。`);
+  }
+}
 
     function renderLabelsTable() {
       const tbody = document.getElementById('labels-table-body');

@@ -563,7 +563,7 @@
       reader.readAsDataURL(file);
     }
 
-    // 使用 Google 官方推薦的 gemini-2.5-flash 最新模型
+// 使用目前官方標準端點：gemini-2.5-flash 與 gemini-flash-latest
 async function runGeminiVisionOcr() {
   if (!state.currentImageBase64) {
     alert('請先拍攝或上傳標籤照片！');
@@ -603,8 +603,8 @@ async function runGeminiVisionOcr() {
   let parsed = null;
   let lastErrMsg = '';
 
-  // 依照官方建議：優先調用 gemini-2.5-flash，次選 gemini-1.5-flash
-  const modelList = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+  // 更新為目前官方支援的模型名稱
+  const modelList = ['gemini-2.5-flash', 'gemini-flash-latest'];
 
   for (const m of modelList) {
     try {

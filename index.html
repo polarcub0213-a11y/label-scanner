@@ -777,13 +777,12 @@ async function runGeminiVisionOcr() {
       return r;
     }
 
-// 直接接收比對結果，保證筆數精準且品名清晰
+// 雲端串流接收：在前端瀏覽器使用原生 TextDecoder('big5') 解析，完全不依賴字典，品名 100% 正確
 function syncCloudCsv(isManual = false) {
   const text = document.getElementById('csv-status-text');
   const badge = document.getElementById('badge-csv-status');
   if (badge) badge.classList.remove('hidden');
 
-  // 取出已辨識的板號 P 單清單
   const pList = state.labels
     .map(l => (l.p_order || '').replace(/["'\s]/g, '').trim())
     .filter(Boolean)
@@ -825,24 +824,65 @@ function syncCloudCsv(isManual = false) {
       btn.disabled = false;
     }
 
-    if (json && json.status === 'success') {
-      state.matchedDetails = json.matchedRows || [];
-      if (text) text.textContent = `已回傳 ${json.fileName} (${state.matchedDetails.length}筆符合)`;
+    if (json && json.status === 'success' && json.csvBase64) {
+      try {
+        // 1. 將後端過濾後的原始 Bytes 從 Base64 解開
+        const binaryStr = window.atob(json.csvBase64);
+        const len = binaryStr.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
 
-      const badgeCount = document.getElementById('badge-match-count');
-      const statMatched = document.getElementById('stat-matched-rows');
-      const statCsv = document.getElementById('stat-csv-rows');
+        // 2. ★ 瀏覽器原生繁體中文 Big5 解碼 (骨腿切丁等字元 100% 還原)
+        const decoder = new TextDecoder('big5');
+        const csvText = decoder.decode(bytes);
 
-      if (badgeCount) badgeCount.textContent = `${state.matchedDetails.length}筆符合`;
-      if (statMatched) statMatched.textContent = `${state.matchedDetails.length} 筆`;
-      if (statCsv) statCsv.textContent = `${json.totalRows || 39413} 筆`;
+        // 3. 逐行解析 CSV
+        const cleanContent = csvText.replace(/^\uFEFF/, '');
+        const lines = cleanContent.split(/\r?\n/).filter(line => line.trim());
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, ''));
 
-      renderSheet1Table();
-      renderSheet2Table();
+        state.matchedDetails = [];
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^["']\vert{}["']$/g, ''));
 
-      if (isManual) {
-        switchTab('sheet1');
-        alert(`✅ 比對成功！已成功關聯出 ${state.matchedDetails.length} 筆明細！`);
+          state.matchedDetails.push({
+            '打包日期': cols[1] || '',
+            '打包隊': cols[2] || '',
+            '打包單號': cols[3] || '',
+            '打包型態': '6- 移入大庫', // 固定為 6- 移入大庫
+            '產品編號': cols[5] || '', // F 欄產品編號
+            '產品名稱': cols[6] || '', // G 欄產品名稱（大庫原始繁體中文）
+            '規格': cols[7] || '',
+            '製造日期': cols[8] || '',
+            '數量': cols[9] || '0',
+            '重量': cols[10] || '0',
+            '條碼內容': cols[11] || ''
+          });
+        }
+
+        if (text) text.textContent = `已回傳 ${json.fileName} (${state.matchedDetails.length}筆符合)`;
+
+        const badgeCount = document.getElementById('badge-match-count');
+        const statMatched = document.getElementById('stat-matched-rows');
+        const statCsv = document.getElementById('stat-csv-rows');
+
+        if (badgeCount) badgeCount.textContent = `${state.matchedDetails.length}筆符合`;
+        if (statMatched) statMatched.textContent = `${state.matchedDetails.length} 筆`;
+        if (statCsv) statCsv.textContent = `${json.totalRows || 39413} 筆`;
+
+        renderSheet1Table();
+        renderSheet2Table();
+
+        if (isManual) {
+          switchTab('sheet1');
+          alert(`✅ 比對成功！已成功關聯出 ${state.matchedDetails.length} 筆明細！`);
+        }
+      } catch (err) {
+        if (text) text.textContent = '解碼失敗：' + err.message;
       }
     } else if (json && json.status === 'ready') {
       if (text) text.textContent = `雲端就緒 (${json.fileName})`;
@@ -860,35 +900,6 @@ function syncCloudCsv(isManual = false) {
   script.src = `${state.gasUrl}?callback=${callbackName}&p_orders=${encodeURIComponent(pList)}&t=${Date.now()}`;
   document.body.appendChild(script);
 }
-
-    function renderSheet1Table() {
-      const tbody = document.getElementById('sheet1-table-body');
-      tbody.innerHTML = '';
-      if (!state.matchedDetails.length) {
-        tbody.innerHTML = '<tr><td colspan="12" class="p-8 text-center text-slate-400">尚未比對出明細資料，請點擊上方「開始比對並回傳」</td></tr>';
-        return;
-      }
-
-      state.matchedDetails.forEach((r, idx) => {
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-50";
-        tr.innerHTML = `
-          <td class="p-2 text-center text-slate-400">${idx + 1}</td>
-          <td class="p-2">${r['打包日期'] || ''}</td>
-          <td class="p-2">${r['打包隊'] || ''}</td>
-          <td class="p-2 text-blue-700 font-bold">${r['打包單號'] || ''}</td>
-          <td class="p-2 font-medium text-slate-700">${r['打包型態'] || ''}</td>
-          <td class="p-2 text-emerald-700 font-bold">${r['產品編號'] || ''}</td>
-          <td class="p-2 text-slate-900 font-bold">${r['產品名稱'] || ''}</td>
-          <td class="p-2 text-center">${r['規格'] || ''}</td>
-          <td class="p-2">${r['製造日期'] || ''}</td>
-          <td class="p-2 text-right">${r['數量'] || '0'}</td>
-          <td class="p-2 text-right">${parseFloat(r['重量'] || 0).toFixed(2)}</td>
-          <td class="p-2">${r['條碼內容'] || ''}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
 
     function renderSheet2Table() {
       const tbody = document.getElementById('sheet2-table-body');

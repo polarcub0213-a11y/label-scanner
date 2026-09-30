@@ -69,7 +69,7 @@
             <i class="fa-brands fa-google-drive mr-1.5"></i>雲端資料夾
           </a>
           <button id="btn-open-api-modal" class="px-3 py-1.5 text-xs font-semibold rounded-lg border transition flex items-center bg-slate-100 text-slate-700 border-slate-300">
-            <i class="fa-solid fa-key mr-1.5"></i>API 已配置
+            <i class="fa-solid fa-key mr-1.5 text-emerald-600"></i><span id="nav-key-status">3組金鑰輪替</span>
           </button>
         </div>
       </div>
@@ -427,20 +427,39 @@
     </div>
   </div>
 
-  <!-- API 設定彈窗 -->
+  <!-- API 設定彈窗 (支援 3 組金鑰自動切換) -->
   <div id="modal-api" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl flex flex-col gap-3">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl flex flex-col gap-3">
       <div class="flex items-center justify-between border-b pb-2">
         <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-          <i class="fa-solid fa-key text-emerald-600"></i> Google Gemini API 設定
+          <i class="fa-solid fa-key text-emerald-600"></i> Google Gemini API 設定 (3組自動輪替)
         </h3>
         <button id="btn-close-api-modal" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
-      <p class="text-xs text-slate-600">當前金鑰（已預設配置）：</p>
-      <input type="password" id="input-api-key" class="border rounded-lg p-2 text-xs font-mono">
-      <div class="flex items-center justify-between pt-2">
-        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-xs text-emerald-600 underline">前往 Google AI Studio</a>
-        <button id="btn-save-api-key" class="px-4 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg">更新儲存</button>
+      <p class="text-xs text-slate-500">
+        當其中一組金鑰達到每分鐘呼叫限制 (429) 或伺服器繁忙時，系統會自動無縫切換到下一組金鑰重試：
+      </p>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">金鑰 A (目前預設)：</label>
+          <input type="password" id="input-api-key-a" class="w-full border rounded-lg p-2 text-xs font-mono" placeholder="AQ.xxx 或 AIzasy...">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">金鑰 B (第 2 組備援)：</label>
+          <input type="password" id="input-api-key-b" class="w-full border rounded-lg p-2 text-xs font-mono" placeholder="貼上第二個 Google 帳號申請的金鑰">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">金鑰 C (第 3 組備援)：</label>
+          <input type="password" id="input-api-key-c" class="w-full border rounded-lg p-2 text-xs font-mono" placeholder="貼上第三個 Google 帳號申請的金鑰">
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-3 border-t">
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-xs text-emerald-600 underline">前往 Google AI Studio 申請</a>
+        <button id="btn-save-api-keys" class="px-4 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition">
+          儲存 3 組金鑰
+        </button>
       </div>
     </div>
   </div>
@@ -448,30 +467,21 @@
   <!-- JavaScript 核心程式碼 -->
   <script>
     const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbzNFID1CjhHMrzs7vhFqX4zWdkD5u8W0DnmO_VEtZsK7AT1Pke8vVlPjRs2P-dLUJKRCA/exec";
-    const HARDCODED_API_KEY = "";
     
-    // 預設標籤資料（包含照片上的 12 板單號）
-    const FALLBACK_LABELS_SAMPLE = [
-      { product_code: "5109000132", product_name: "40-50去皮清肉", p_order: "P681591060", seq: "28", boxes: "42箱", date: "115/09/15" },
-      { product_code: "5119000052", product_name: "里肌肉丁 8~10g", p_order: "P681591039", seq: "7", boxes: "42箱", date: "115/09/10" },
-      { product_code: "5119000052", product_name: "里肌肉丁 8~10g", p_order: "P681591049", seq: "17", boxes: "42箱", date: "115/09/05" },
-      { product_code: "5119000052", product_name: "里肌肉丁 8~10g", p_order: "P681591035", seq: "3", boxes: "42箱", date: "115/09/10" },
-      { product_code: "5123000484", product_name: "A級翅小腿-凍", p_order: "P681591042", seq: "10", boxes: "42箱", date: "115/09/09" },
-      { product_code: "5123000484", product_name: "A級翅小腿-凍", p_order: "P681591062", seq: "30", boxes: "42箱", date: "115/09/01" },
-      { product_code: "5147000392", product_name: "去皮帶骨胸丁(7-11)", p_order: "P681591057", seq: "25", boxes: "42箱", date: "115/09/09" },
-      { product_code: "5147000392", product_name: "去皮帶骨胸丁(7-11)", p_order: "P681591045", seq: "13", boxes: "42箱", date: "115/09/08" },
-      { product_code: "5147000432", product_name: "8-10胸肉丁", p_order: "P681591044", seq: "12", boxes: "42箱", date: "115/09/04" },
-      { product_code: "5147000432", product_name: "8-10胸肉丁", p_order: "P681591040", seq: "8", boxes: "42箱", date: "115/09/10" },
-      { product_code: "5147000582", product_name: "去皮腿肉塊12-16g(方型)", p_order: "P681591048", seq: "16", boxes: "42箱", date: "115/09/07" },
-      { product_code: "5147000048", product_name: "骨腿切丁", p_order: "P681591010", seq: "5", boxes: "42箱", date: "115/09/14" }
-    ];
-
+    // 預設第 1 組金鑰
+    const DEFAULT_KEY_A = "";
+    
     let state = {
-      apiKey: localStorage.getItem('gemini_api_key') || HARDCODED_API_KEY,
+      // 3 組 API Key 池
+      apiKeys: [
+        localStorage.getItem('gemini_api_key_a') || DEFAULT_KEY_A,
+        localStorage.getItem('gemini_api_key_b') || '',
+        localStorage.getItem('gemini_api_key_c') || ''
+      ],
       gasUrl: localStorage.getItem('gas_web_app_url') || DEFAULT_GAS_URL,
       selectedDate: '',
       currentImageBase64: null,
-      labels: JSON.parse(JSON.stringify(FALLBACK_LABELS_SAMPLE)),
+      labels: [],
       csvRows: [],
       matchedDetails: []
     };
@@ -584,25 +594,27 @@
       reader.readAsDataURL(file);
     }
 
+    // ★ 核心：三組 API Key 自動輪替 (A ➔ B ➔ C) 的真實 AI 辨識函式
     async function runGeminiVisionOcr() {
       if (!state.currentImageBase64) {
         alert('請先拍攝或選取標籤照片！');
         return;
       }
 
-      const key = (state.apiKey || HARDCODED_API_KEY).trim();
-      if (!key) {
-        alert('請先點擊右上角「API 設定」配置您的 API Key！');
+      // 篩選出目前有填寫的有效金鑰
+      const validKeys = state.apiKeys.map((k, idx) => ({ key: (k || '').trim(), label: ['A', 'B', 'C'][idx] })).filter(item => item.key.length > 0);
+
+      if (validKeys.length === 0) {
+        alert('請先點擊右上角「API 設定」配置至少一組 Gemini API Key！');
         return;
       }
 
       btnStartOcr.disabled = true;
-      btnStartOcr.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> AI 辨識分析相片中...';
 
       const promptText = `你是一個專業倉儲視覺辨識系統。請仔細辨識這張相片中的所有標籤。
 每張標籤請精準提取以下資訊：
-1. 產品名稱 (位於標籤上方，如：40-50去皮清肉、里肌肉丁 8~10g、A級翅小腿-凍、去皮帶骨胸丁(7-11)、8-10胸肉丁、去皮腿肉塊 等)
-2. 產品編號 (條碼上方的10碼數字，如 5109000132, 5119000052 等)
+1. 產品名稱 (位於標籤上方，如：40-50去皮清肉、里肌肉丁 8~10g、A級翅小腿-凍、去皮帶骨胸丁(7-11)、8-10胸肉丁、去皮腿肉塊、骨腿切丁 等)
+2. 產品編號 (條碼上方的10碼數字，如 5109000132 等)
 3. 板號P單 (條碼正下方的10碼編號，以 P 開頭，如 P681591060 等)
 4. 序號 (標籤右上方數字)
 5. 箱數 (如 42箱)
@@ -622,48 +634,66 @@
 
       const base64Data = state.currentImageBase64.split(',')[1];
       let parsed = null;
-      let lastErrMsg = '';
+      let usedKeyLabel = '';
+      let failureLogs = [];
 
+      // 雙模型優先順序
       const models = ['gemini-2.5-flash', 'gemini-flash-latest'];
 
-      for (const m of models) {
-        try {
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
-          const resp = await fetch(url, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-goog-api-key': key
-            },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { text: promptText },
-                  { inline_data: { mime_type: "image/jpeg", data: base64Data } }
-                ]
-              }],
-              generationConfig: {
-                temperature: 0.1,
-                responseMimeType: "application/json"
+      // 外層輪替：逐一嘗試金鑰 A ➔ 金鑰 B ➔ 金鑰 C
+      keyLoop:
+      for (const kObj of validKeys) {
+        btnStartOcr.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 使用金鑰 ${kObj.label} 辨識中...`;
+
+        for (const m of models) {
+          try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
+            const resp = await fetch(url, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': kObj.key
+              },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [
+                    { text: promptText },
+                    { inline_data: { mime_type: "image/jpeg", data: base64Data } }
+                  ]
+                }],
+                generationConfig: {
+                  temperature: 0.1,
+                  responseMimeType: "application/json"
+                }
+              })
+            });
+
+            if (!resp.ok) {
+              const errJson = await resp.json().catch(() => ({}));
+              const errMsg = errJson.error?.message || `HTTP ${resp.status}`;
+              failureLogs.push(`金鑰 ${kObj.label} (${m}): ${errMsg}`);
+
+              // 若遇 429 額度超限或 503 忙碌，直接跳出本金鑰，換下一組金鑰！
+              if (resp.status === 429 || resp.status === 503 || errMsg.includes('quota') || errMsg.includes('demand')) {
+                console.warn(`金鑰 ${kObj.label} 額度超限或忙碌，立即換下一組金鑰...`);
+                break; // 跳出當前 model 迴圈，前往下一個金鑰
               }
-            })
-          });
+              continue;
+            }
 
-          if (!resp.ok) {
-            const errJson = await resp.json().catch(() => ({}));
-            lastErrMsg = `${m}: ${errJson.error?.message || resp.statusText || resp.status}`;
-            continue;
+            const data = await resp.json();
+            const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (rawText) {
+              const clean = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+              parsed = JSON.parse(clean);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                usedKeyLabel = kObj.label;
+                break keyLoop; // 成功解析！直接跳出所有迴圈
+              }
+            }
+          } catch (err) {
+            failureLogs.push(`金鑰 ${kObj.label} (${m}): ${err.message}`);
           }
-
-          const data = await resp.json();
-          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (rawText) {
-            const clean = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-            parsed = JSON.parse(clean);
-            if (Array.isArray(parsed) && parsed.length > 0) break;
-          }
-        } catch (err) {
-          lastErrMsg = `${m}: ${err.message}`;
         }
       }
 
@@ -673,10 +703,10 @@
       if (parsed && Array.isArray(parsed) && parsed.length > 0) {
         state.labels = parsed;
         renderLabelsTable();
-        syncCloudCsv(true);
-        alert(`🎉 辨識成功！已從目前相片精準辨識出 ${state.labels.length} 張標籤，並自動同步大庫明細！`);
+        syncCloudCsv(true); // 自動觸發大庫比對
+        alert(`🎉 AI 辨識成功！(透過金鑰 ${usedKeyLabel} 成功解析)\n共辨識出 ${state.labels.length} 張標籤，已自動同步大庫明細！`);
       } else {
-        alert(`AI 辨識未成功，錯誤原因：\n${lastErrMsg || '未能解析內容'}\n\n請檢查 API Key 或網路連線。`);
+        alert(`AI 辨識未成功，金鑰輪替嘗試紀錄：\n\n${failureLogs.join('\n')}\n\n建議：請至右上角「API 設定」確認金鑰 B、C 是否已填入有效金鑰。`);
       }
     }
 
@@ -722,131 +752,123 @@
       renderSheet2Table();
     };
 
-    // 動態動態綁定：直接抓取照片上辨識出的 G 欄產品名稱，徹底解決亂碼且無需字典
-function renderSheet1Table() {
-  const tbody = document.getElementById('sheet1-table-body');
-  if (!tbody) return;
-  tbody.innerHTML = '';
-  if (!state.matchedDetails.length) {
-    tbody.innerHTML = '<tr><td colspan="12" class="p-8 text-center text-slate-400">尚未比對出明細資料，請點擊上方「開始比對並回傳」</td></tr>';
-    return;
-  }
-
-  // 從分頁 1 當下辨識的 12 張標籤建立即時品名對照
-  const currentPhotoNameMap = {};
-  state.labels.forEach(l => {
-    const code = (l.product_code || '').trim();
-    const name = (l.product_name || '').trim();
-    if (code && name) {
-      currentPhotoNameMap[code] = name;
-    }
-  });
-
-  state.matchedDetails.forEach((r, idx) => {
-    const pCode = (r['產品編號'] || '').trim();
-    let pName = (r['產品名稱'] || '').trim();
-
-    // 1. 若大庫回傳的品名出現「孳刻」或菱形問號亂碼，直接取照片辨識的真實繁體品名
-    if (pName.includes('孳刻') || pName.includes('\uFFFD') || pName.includes('') || !pName) {
-      if (currentPhotoNameMap[pCode]) {
-        pName = currentPhotoNameMap[pCode];
+    // ★ 關鍵：以照片真實辨識品名動態帶入，打包型態固定為 6- 移入大庫，保證 100% 繁體中文
+    function renderSheet1Table() {
+      const tbody = document.getElementById('sheet1-table-body');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      if (!state.matchedDetails.length) {
+        tbody.innerHTML = '<tr><td colspan="12" class="p-8 text-center text-slate-400">尚未比對出明細資料，請點擊上方「開始比對並回傳」</td></tr>';
+        return;
       }
+
+      // 從分頁 1 辨識出的標籤中建立動態對照表
+      const currentPhotoNameMap = {};
+      state.labels.forEach(l => {
+        const code = (l.product_code || '').trim();
+        const name = (l.product_name || '').trim();
+        if (code && name) currentPhotoNameMap[code] = name;
+      });
+
+      state.matchedDetails.forEach((r, idx) => {
+        const pCode = (r['產品編號'] || '').trim();
+        let pName = (r['產品名稱'] || '').trim();
+
+        // 若大庫字串有損壞，直接從剛才 AI 辨識出的正確品名覆蓋
+        if (pName.includes('孳刻') || pName.includes('\uFFFD') || pName.includes('') || !pName) {
+          if (currentPhotoNameMap[pCode]) {
+            pName = currentPhotoNameMap[pCode];
+          }
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50";
+        tr.innerHTML = `
+          <td class="p-2 text-center text-slate-400">${idx + 1}</td>
+          <td class="p-2">${r['打包日期'] || ''}</td>
+          <td class="p-2">${r['打包隊'] || ''}</td>
+          <td class="p-2 text-blue-700 font-bold">${r['打包單號'] || ''}</td>
+          <td class="p-2 font-medium text-slate-700">6- 移入大庫</td>
+          <td class="p-2 text-emerald-700 font-bold">${pCode}</td>
+          <td class="p-2 text-slate-900 font-bold">${pName}</td>
+          <td class="p-2 text-center">${r['規格'] || ''}</td>
+          <td class="p-2">${r['製造日期'] || ''}</td>
+          <td class="p-2 text-right">${r['數量'] || '0'}</td>
+          <td class="p-2 text-right">${parseFloat(r['重量'] || 0).toFixed(2)}</td>
+          <td class="p-2">${r['條碼內容'] || ''}</td>
+        `;
+        tbody.appendChild(tr);
+      });
     }
 
-    const tr = document.createElement('tr');
-    tr.className = "hover:bg-slate-50";
-    tr.innerHTML = `
-      <td class="p-2 text-center text-slate-400">${idx + 1}</td>
-      <td class="p-2">${r['打包日期'] || ''}</td>
-      <td class="p-2">${r['打包隊'] || ''}</td>
-      <td class="p-2 text-blue-700 font-bold">${r['打包單號'] || ''}</td>
-      <td class="p-2 font-medium text-slate-700">6- 移入大庫</td>
-      <td class="p-2 text-emerald-700 font-bold">${pCode}</td>
-      <td class="p-2 text-slate-900 font-bold">${pName}</td>
-      <td class="p-2 text-center">${r['規格'] || ''}</td>
-      <td class="p-2">${r['製造日期'] || ''}</td>
-      <td class="p-2 text-right">${r['數量'] || '0'}</td>
-      <td class="p-2 text-right">${parseFloat(r['重量'] || 0).toFixed(2)}</td>
-      <td class="p-2">${r['條碼內容'] || ''}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-    // ★ 關鍵：補回 Sheet 2 彙總表格渲染函式
     function renderSheet2Table() {
-  const tbody = document.getElementById('sheet2-table-body');
-  if (!tbody) return;
-  tbody.innerHTML = '';
-  if (!state.matchedDetails.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-400">尚未比對出彙總資料</td></tr>';
-    return;
-  }
-
-  // 從分頁 1 抓取即時品名對照
-  const currentPhotoNameMap = {};
-  state.labels.forEach(l => {
-    const code = (l.product_code || '').trim();
-    const name = (l.product_name || '').trim();
-    if (code && name) {
-      currentPhotoNameMap[code] = name;
-    }
-  });
-
-  const groups = {};
-  let totalQty = 0;
-  let totalWeight = 0;
-
-  state.matchedDetails.forEach(r => {
-    const pCode = (r['產品編號'] || '').trim();
-    let pName = (r['產品名稱'] || '').trim();
-
-    // 替換亂碼為照片真實品名
-    if (pName.includes('孳刻') || pName.includes('\uFFFD') || pName.includes('') || !pName) {
-      if (currentPhotoNameMap[pCode]) {
-        pName = currentPhotoNameMap[pCode];
+      const tbody = document.getElementById('sheet2-table-body');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      if (!state.matchedDetails.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-400">尚未比對出彙總資料</td></tr>';
+        return;
       }
+
+      const currentPhotoNameMap = {};
+      state.labels.forEach(l => {
+        const code = (l.product_code || '').trim();
+        const name = (l.product_name || '').trim();
+        if (code && name) currentPhotoNameMap[code] = name;
+      });
+
+      const groups = {};
+      let totalQty = 0;
+      let totalWeight = 0;
+
+      state.matchedDetails.forEach(r => {
+        const pCode = (r['產品編號'] || '').trim();
+        let pName = (r['產品名稱'] || '').trim();
+
+        if (pName.includes('孳刻') || pName.includes('\uFFFD') || pName.includes('') || !pName) {
+          if (currentPhotoNameMap[pCode]) {
+            pName = currentPhotoNameMap[pCode];
+          }
+        }
+
+        const spec = r['規格'] || '';
+        const pOrder = r['打包單號'] || '';
+        const mDate = r['製造日期'] || '';
+        const qty = parseInt(r['數量'] || 0, 10);
+        const weight = parseFloat(r['重量'] || 0);
+
+        totalQty += qty;
+        totalWeight += weight;
+
+        const key = `${pCode}__${pName}__${spec}__${pOrder}__${mDate}`;
+        if (!groups[key]) {
+          groups[key] = { pCode, pName, spec, pOrder, mDate, qty: 0, weight: 0 };
+        }
+        groups[key].qty += qty;
+        groups[key].weight += weight;
+      });
+
+      Object.values(groups).forEach(g => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50";
+        tr.innerHTML = `
+          <td class="p-2.5 font-bold font-mono text-emerald-700">${g.pCode}</td>
+          <td class="p-2.5 font-bold text-slate-800">${g.pName}</td>
+          <td class="p-2.5 text-center">${g.spec}</td>
+          <td class="p-2.5 font-mono text-blue-700 font-bold">${g.pOrder}</td>
+          <td class="p-2.5 font-mono">${g.mDate}</td>
+          <td class="p-2.5 text-right font-mono font-bold">${g.qty}</td>
+          <td class="p-2.5 text-right font-mono font-bold">${g.weight.toFixed(2)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const totalQtyElem = document.getElementById('sheet2-total-qty');
+      const totalWeightElem = document.getElementById('sheet2-total-weight');
+      if (totalQtyElem) totalQtyElem.textContent = totalQty;
+      if (totalWeightElem) totalWeightElem.textContent = totalWeight.toFixed(2);
     }
 
-    const spec = r['規格'] || '';
-    const pOrder = r['打包單號'] || '';
-    const mDate = r['製造日期'] || '';
-    const qty = parseInt(r['數量'] || 0, 10);
-    const weight = parseFloat(r['重量'] || 0);
-
-    totalQty += qty;
-    totalWeight += weight;
-
-    const key = `${pCode}__${pName}__${spec}__${pOrder}__${mDate}`;
-    if (!groups[key]) {
-      groups[key] = { pCode, pName, spec, pOrder, mDate, qty: 0, weight: 0 };
-    }
-    groups[key].qty += qty;
-    groups[key].weight += weight;
-  });
-
-  Object.values(groups).forEach(g => {
-    const tr = document.createElement('tr');
-    tr.className = "hover:bg-slate-50";
-    tr.innerHTML = `
-      <td class="p-2.5 font-bold font-mono text-emerald-700">${g.pCode}</td>
-      <td class="p-2.5 font-bold text-slate-800">${g.pName}</td>
-      <td class="p-2.5 text-center">${g.spec}</td>
-      <td class="p-2.5 font-mono text-blue-700 font-bold">${g.pOrder}</td>
-      <td class="p-2.5 font-mono">${g.mDate}</td>
-      <td class="p-2.5 text-right font-mono font-bold">${g.qty}</td>
-      <td class="p-2.5 text-right font-mono font-bold">${g.weight.toFixed(2)}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  const totalQtyElem = document.getElementById('sheet2-total-qty');
-  const totalWeightElem = document.getElementById('sheet2-total-weight');
-  if (totalQtyElem) totalQtyElem.textContent = totalQty;
-  if (totalWeightElem) totalWeightElem.textContent = totalWeight.toFixed(2);
-}
-
-    // ★ 關鍵：前端 Big5 解碼接收器
     function syncCloudCsv(isManual = false) {
       const text = document.getElementById('csv-status-text');
       const badge = document.getElementById('badge-csv-status');
@@ -893,37 +915,29 @@ function renderSheet1Table() {
           btn.disabled = false;
         }
 
-        if (json && json.status === 'success' && json.csvBase64) {
-          try {
-            // 1. 將後端過濾後的原始 Bytes 從 Base64 解開
+        if (json && json.status === 'success') {
+          // 支援 json.matchedRows 或 Base64 格式
+          if (json.matchedRows) {
+            state.matchedDetails = json.matchedRows;
+          } else if (json.csvBase64) {
             const binaryStr = window.atob(json.csvBase64);
             const len = binaryStr.length;
             const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-              bytes[i] = binaryStr.charCodeAt(i);
-            }
-
-            // 2. 瀏覽器原生繁體中文 Big5 解碼
+            for (let i = 0; i < len; i++) bytes[i] = binaryStr.charCodeAt(i);
             const decoder = new TextDecoder('big5');
             const csvText = decoder.decode(bytes);
-
-            // 3. 逐行解析 CSV
-            const cleanContent = csvText.replace(/^\uFEFF/, '');
-            const lines = cleanContent.split(/\r?\n/).filter(line => line.trim());
-
+            const lines = csvText.replace(/^\uFEFF/, '').split(/\r?\n/).filter(line => line.trim());
+            
             state.matchedDetails = [];
             for (let i = 1; i < lines.length; i++) {
-              const line = lines[i].trim();
-              if (!line) continue;
-              const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^["']\vert{}["']$/g, ''));
-
+              const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^["']\vert{}["']$/g, ''));
               state.matchedDetails.push({
                 '打包日期': cols[1] || '',
                 '打包隊': cols[2] || '',
                 '打包單號': cols[3] || '',
-                '打包型態': '6- 移入大庫', // 固定為 6- 移入大庫
-                '產品編號': cols[5] || '', // F 欄產品編號
-                '產品名稱': cols[6] || '', // G 欄產品名稱 (大庫原始文字：骨腿切丁等)
+                '打包型態': '6- 移入大庫',
+                '產品編號': cols[5] || '',
+                '產品名稱': cols[6] || '',
                 '規格': cols[7] || '',
                 '製造日期': cols[8] || '',
                 '數量': cols[9] || '0',
@@ -931,26 +945,24 @@ function renderSheet1Table() {
                 '條碼內容': cols[11] || ''
               });
             }
+          }
 
-            if (text) text.textContent = `已回傳 ${json.fileName} (${state.matchedDetails.length}筆符合)`;
+          if (text) text.textContent = `已回傳 ${json.fileName} (${state.matchedDetails.length}筆符合)`;
 
-            const badgeCount = document.getElementById('badge-match-count');
-            const statMatched = document.getElementById('stat-matched-rows');
-            const statCsv = document.getElementById('stat-csv-rows');
+          const badgeCount = document.getElementById('badge-match-count');
+          const statMatched = document.getElementById('stat-matched-rows');
+          const statCsv = document.getElementById('stat-csv-rows');
 
-            if (badgeCount) badgeCount.textContent = `${state.matchedDetails.length}筆符合`;
-            if (statMatched) statMatched.textContent = `${state.matchedDetails.length} 筆`;
-            if (statCsv) statCsv.textContent = `${json.totalRows || 39413} 筆`;
+          if (badgeCount) badgeCount.textContent = `${state.matchedDetails.length}筆符合`;
+          if (statMatched) statMatched.textContent = `${state.matchedDetails.length} 筆`;
+          if (statCsv) statCsv.textContent = `${json.totalRows || 39413} 筆`;
 
-            renderSheet1Table();
-            renderSheet2Table();
+          renderSheet1Table();
+          renderSheet2Table();
 
-            if (isManual) {
-              switchTab('sheet1');
-              alert(`✅ 比對成功！已成功關聯出 ${state.matchedDetails.length} 筆明細！`);
-            }
-          } catch (err) {
-            if (text) text.textContent = '解碼失敗：' + err.message;
+          if (isManual) {
+            switchTab('sheet1');
+            alert(`✅ 比對成功！已成功關聯出 ${state.matchedDetails.length} 筆明細！`);
           }
         } else if (json && json.status === 'ready') {
           if (text) text.textContent = `雲端就緒 (${json.fileName})`;
@@ -974,6 +986,13 @@ function renderSheet1Table() {
       const [y, m, d] = state.selectedDate.split('-');
       const rocYear = parseInt(y) - 1911;
 
+      const currentPhotoNameMap = {};
+      state.labels.forEach(l => {
+        const code = (l.product_code || '').trim();
+        const name = (l.product_name || '').trim();
+        if (code && name) currentPhotoNameMap[code] = name;
+      });
+
       const sheet1Data = [
         ["", "報表編號: INV17190032", "", "", "", "", "", "", "", "", `印表日期: ${rocYear}/${m}/${d}`],
         ["", "台灣卜蜂企業股份有限公司 速凍打包批號明細表"],
@@ -981,14 +1000,20 @@ function renderSheet1Table() {
       ];
 
       state.matchedDetails.forEach(r => {
+        const pCode = (r['產品編號'] || '').trim();
+        let pName = (r['產品名稱'] || '').trim();
+        if (pName.includes('孳刻') || pName.includes('\uFFFD') || pName.includes('') || !pName) {
+          if (currentPhotoNameMap[pCode]) pName = currentPhotoNameMap[pCode];
+        }
+
         sheet1Data.push([
           "",
           r['打包日期'] || '',
           r['打包隊'] || '',
           r['打包單號'] || '',
-          r['打包型態'] || '',
-          r['產品編號'] || '',
-          r['產品名稱'] || '',
+          '6- 移入大庫',
+          pCode,
+          pName,
           r['規格'] || '',
           r['製造日期'] || '',
           parseInt(r['數量'] || 0, 10),
@@ -1017,8 +1042,12 @@ function renderSheet1Table() {
       let totalWeight = 0;
 
       state.matchedDetails.forEach(r => {
-        const pCode = r['產品編號'] || '';
-        const pName = r['產品名稱'] || '';
+        const pCode = (r['產品編號'] || '').trim();
+        let pName = (r['產品名稱'] || '').trim();
+        if (pName.includes('孳刻') || pName.includes('\uFFFD') || pName.includes('') || !pName) {
+          if (currentPhotoNameMap[pCode]) pName = currentPhotoNameMap[pCode];
+        }
+
         const spec = r['規格'] || '';
         const pOrder = r['打包單號'] || '';
         const mDate = r['製造日期'] || '';
@@ -1082,14 +1111,8 @@ function renderSheet1Table() {
           let binary = '';
           const bytes = new Uint8Array(u8);
           const len = bytes.byteLength;
-          for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(bytes[i]);
-          }
+          for (let i = 0; i < len; i++) binary += String.fromCharCode(bytes[i]);
           base64Xls = window.btoa(binary);
-        }
-
-        if (!base64Xls) {
-          throw new Error("無法生成 Excel 二進位資料");
         }
 
         const [y, m, d] = state.selectedDate.split('-');
@@ -1146,19 +1169,30 @@ function renderSheet1Table() {
         document.getElementById(id).addEventListener('input', updateTitles);
       });
 
+      // API 彈窗與 3 組金鑰設定
       const apiModal = document.getElementById('modal-api');
-      document.getElementById('input-api-key').value = state.apiKey;
+      document.getElementById('input-api-key-a').value = state.apiKeys[0] || '';
+      document.getElementById('input-api-key-b').value = state.apiKeys[1] || '';
+      document.getElementById('input-api-key-c').value = state.apiKeys[2] || '';
+
       document.getElementById('btn-open-api-modal').onclick = () => apiModal.classList.remove('hidden');
       document.getElementById('btn-open-api-modal-m').onclick = () => apiModal.classList.remove('hidden');
       document.getElementById('btn-close-api-modal').onclick = () => apiModal.classList.add('hidden');
-      document.getElementById('btn-save-api-key').onclick = () => {
-        const key = document.getElementById('input-api-key').value.trim();
-        if (key) {
-          state.apiKey = key;
-          localStorage.setItem('gemini_api_key', key);
-          alert('API Key 儲存成功！');
-          apiModal.classList.add('hidden');
-        }
+      
+      document.getElementById('btn-save-api-keys').onclick = () => {
+        const keyA = document.getElementById('input-api-key-a').value.trim();
+        const keyB = document.getElementById('input-api-key-b').value.trim();
+        const keyC = document.getElementById('input-api-key-c').value.trim();
+
+        state.apiKeys = [keyA, keyB, keyC];
+        localStorage.setItem('gemini_api_key_a', keyA);
+        localStorage.setItem('gemini_api_key_b', keyB);
+        localStorage.setItem('gemini_api_key_c', keyC);
+
+        const count = [keyA, keyB, keyC].filter(Boolean).length;
+        document.getElementById('nav-key-status').textContent = `${count}組金鑰已就緒`;
+        alert(`✅ 已儲存 ${count} 組 API 金鑰！系統辨識時將會自動切換輪替。`);
+        apiModal.classList.add('hidden');
       };
 
       const gasModal = document.getElementById('modal-gas');

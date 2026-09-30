@@ -734,80 +734,84 @@ async function runGeminiVisionOcr() {
       renderSheet2Table();
     }
 
-    // 串流同步大庫 CSV 並以 Big5 解析
-    function syncCloudCsv(isManual = false) {
-      const text = document.getElementById('csv-status-text');
-      const badge = document.getElementById('badge-csv-status');
-      if (badge) badge.classList.remove('hidden');
-      if (text) text.textContent = '雲端串流下載中...';
+// 雲端串流接收與瀏覽器原生 Big5 解碼
+function syncCloudCsv(isManual = false) {
+  const text = document.getElementById('csv-status-text');
+  const badge = document.getElementById('badge-csv-status');
+  if (badge) badge.classList.remove('hidden');
+  if (text) text.textContent = '雲端大庫同步中...';
 
-      const btn = document.getElementById('btn-manual-trigger-match');
-      if (btn && isManual) {
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 對碰中...';
-        btn.disabled = true;
-      }
+  const btn = document.getElementById('btn-manual-trigger-match');
+  if (btn && isManual) {
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 對碰中...';
+    btn.disabled = true;
+  }
 
-      const callbackName = 'gasCallback_' + Date.now();
-      const timeoutTimer = setTimeout(() => {
-        delete window[callbackName];
-        const oldScript = document.getElementById('jsonp-gas-script');
-        if (oldScript) oldScript.remove();
-        if (text) text.textContent = '連線逾時 (請檢查雲端資料夾)';
-        if (btn && isManual) {
-          btn.innerHTML = '<i class="fa-solid fa-play"></i> 開始比對並回傳';
-          btn.disabled = false;
-        }
-      }, 35000);
+  const callbackName = 'gasCallback_' + Date.now();
+  const timeoutTimer = setTimeout(() => {
+    delete window[callbackName];
+    const oldScript = document.getElementById('jsonp-gas-script');
+    if (oldScript) oldScript.remove();
+    if (text) text.textContent = '連線逾時 (請檢查雲端資料夾)';
+    if (btn && isManual) {
+      btn.innerHTML = '<i class="fa-solid fa-play"></i> 開始比對並回傳';
+      btn.disabled = false;
+    }
+  }, 35000);
 
-      window[callbackName] = function(json) {
-        clearTimeout(timeoutTimer);
-        delete window[callbackName];
-        const oldScript = document.getElementById('jsonp-gas-script');
-        if (oldScript) oldScript.remove();
+  window[callbackName] = function(json) {
+    clearTimeout(timeoutTimer);
+    delete window[callbackName];
+    const oldScript = document.getElementById('jsonp-gas-script');
+    if (oldScript) oldScript.remove();
 
-        if (btn && isManual) {
-          btn.innerHTML = '<i class="fa-solid fa-play"></i> 開始比對並回傳';
-          btn.disabled = false;
-        }
-
-        if (json && json.status === 'success' && json.csvBase64) {
-          try {
-            const binaryStr = window.atob(json.csvBase64);
-            const len = binaryStr.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-              bytes[i] = binaryStr.charCodeAt(i);
-            }
-            const decoder = new TextDecoder('big5');
-            const csvText = decoder.decode(bytes);
-
-            parseCsvContent(csvText);
-            doLocalMatching();
-
-            if (text) text.textContent = `已對碰 ${json.fileName} (${state.matchedDetails.length}筆符合)`;
-
-            if (isManual) {
-              switchTab('sheet1');
-              alert(`✅ 比對成功！已成功關聯出 ${state.matchedDetails.length} 筆明細資料！`);
-            }
-          } catch (e) {
-            if (text) text.textContent = '解碼失敗：' + e.message;
-          }
-        } else {
-          if (text) text.textContent = json.message || '找不到大庫檔案';
-          if (isManual) alert('比對失敗：' + (json.message || '找不到大庫檔案'));
-        }
-      };
-
-      const oldScript = document.getElementById('jsonp-gas-script');
-      if (oldScript) oldScript.remove();
-
-      const script = document.createElement('script');
-      script.id = 'jsonp-gas-script';
-      script.src = `${state.gasUrl}?callback=${callbackName}&t=${Date.now()}`;
-      document.body.appendChild(script);
+    if (btn && isManual) {
+      btn.innerHTML = '<i class="fa-solid fa-play"></i> 開始比對並回傳';
+      btn.disabled = false;
     }
 
+    if (json && json.status === 'success' && json.csvBase64) {
+      try {
+        // 1. 將 Base64 還原為二進位 byte 陣列
+        const binaryStr = window.atob(json.csvBase64);
+        const len = binaryStr.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+
+        // 2. 使用瀏覽器原生 TextDecoder 直接以 Big5/CP950 完整繁體解碼
+        const decoder = new TextDecoder('big5');
+        const csvText = decoder.decode(bytes);
+
+        // 3. 解析並對碰
+        parseCsvContent(csvText);
+        doLocalMatching();
+
+        if (text) text.textContent = `已對碰 ${json.fileName} (${state.matchedDetails.length}筆符合)`;
+
+        if (isManual) {
+          switchTab('sheet1');
+          alert(`✅ 比對成功！已成功關聯出 ${state.matchedDetails.length} 筆明細資料！`);
+        }
+      } catch (e) {
+        if (text) text.textContent = '解碼失敗：' + e.message;
+      }
+    } else {
+      if (text) text.textContent = json.message || '找不到大庫檔案';
+      if (isManual) alert('比對失敗：' + (json.message || '找不到大庫檔案'));
+    }
+  };
+
+  const oldScript = document.getElementById('jsonp-gas-script');
+  if (oldScript) oldScript.remove();
+
+  const script = document.createElement('script');
+  script.id = 'jsonp-gas-script';
+  // 加上時間戳避免瀏覽器快取舊資料
+  script.src = `${state.gasUrl}?callback=${callbackName}&t=${Date.now()}`;
+  document.body.appendChild(script);
+}
     function parseCsvContent(content) {
       if (!content) return;
       const cleanContent = content.replace(/^\uFEFF/, '');
